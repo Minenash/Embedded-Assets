@@ -9,7 +9,6 @@ import net.minecraft.resource.ResourcePack;
 import net.minecraft.resource.ResourcePackCompatibility;
 import net.minecraft.resource.ResourceType;
 import net.minecraft.resource.metadata.PackResourceMetadata;
-import net.minecraft.resource.metadata.ResourceMetadata;
 import net.minecraft.resource.metadata.ResourceMetadataReader;
 import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.Nullable;
@@ -127,7 +126,7 @@ public class EmbeddedZipResourcePack implements ResourcePack {
 
         EmbeddedZipResourcePack pack = new EmbeddedZipResourcePack(sourceName, data);
         PackResourceMetadata meta = pack.parseMetadata(PackResourceMetadata.READER);
-        EmbeddedAssetsLoaderClient.addPackToList(pack, sourceName.substring(9),
+        EmbeddedAssetsClient.addPackToList(pack, sourceName.substring(9),
                 meta.getDescription(), ResourcePackCompatibility.from(meta, ResourceType.CLIENT_RESOURCES));
     }
 

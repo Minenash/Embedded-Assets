@@ -21,7 +21,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
-public class EmbeddedAssetsLoaderClient implements ClientModInitializer {
+public class EmbeddedAssetsClient implements ClientModInitializer {
 	public static final MinecraftClient client = MinecraftClient.getInstance();
 	public static final Logger LOGGER = LoggerFactory.getLogger("content-packs");
 
@@ -29,7 +29,7 @@ public class EmbeddedAssetsLoaderClient implements ClientModInitializer {
 
 	@Override
 	public void onInitializeClient() {
-		ServerLifecycleEvents.SERVER_STARTED.register(new Identifier("content-packs_load-resources"), EmbeddedAssetsLoaderClient::getResourcePacks);
+		ServerLifecycleEvents.SERVER_STARTED.register(new Identifier("content-packs_load-resources"), EmbeddedAssetsClient::getResourcePacks);
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register(new Identifier("content-packs_load-resources"), (server, resourceManager, success) -> getResourcePacks(server));
 
 		ServerLifecycleEvents.SERVER_STOPPING.register(new Identifier("content-packs_remove-resources"), server -> {

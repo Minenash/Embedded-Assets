@@ -2,14 +2,15 @@ package net.fabricmc.example.server;
 
 import com.google.gson.JsonElement;
 import com.mojang.bridge.game.PackType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import net.fabricmc.api.DedicatedServerModInitializer;
 import net.fabricmc.example.mixin.AbstractFileResourcePackAccessor;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.SharedConstants;
-import net.minecraft.resource.AbstractFileResourcePack;
-import net.minecraft.resource.ResourcePackProfile;
-import net.minecraft.resource.ZipResourcePack;
+import net.minecraft.resource.*;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.command.CommandManager;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.JsonHelper;
 
@@ -22,24 +23,26 @@ import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
-public class EmbeddedAssetsLoaderServer implements DedicatedServerModInitializer {
+public class EmbeddedAssetsServer implements DedicatedServerModInitializer {
+
+    public Identifier id(String path) { return new Identifier("embedded_assets", path); }
 
     @Override
     public void onInitializeServer() {
-        ServerLifecycleEvents.SERVER_STARTED.register(new Identifier("content-packs_load-resources"), EmbeddedAssetsLoaderServer::generateMasterPack);
-        ServerLifecycleEvents.END_DATA_PACK_RELOAD.register(new Identifier("content-packs_load-resources"), (server, resourceManager, success) -> generateMasterPack(server));
+        EmbeddedAssetsConfig.read();
+        ServerLifecycleEvents.SERVER_STARTED.register(id("load-resources"), EmbeddedAssetsServer::generateMasterPack);
+        ServerLifecycleEvents.END_DATA_PACK_RELOAD.register(id("load-resources"), (server, resourceManager, success) -> generateMasterPack(server));
+        CommandRegistrationCallback.EVENT.register(id("commands"), EmbeddedAssetsCommand::register);
+
     }
 
-    private static List<String> files = new ArrayList<>();
-
+    public static final List<ResourcePackProfile> profiles = new ArrayList<>();
+    private static final List<String> files = new ArrayList<>();
     private static void generateMasterPack(MinecraftServer server) {
         try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream("resources.zip"))) {
             files.clear();
 
-            for (ResourcePackProfile profile : server.getDataPackManager().getEnabledProfiles()) {
-
-                if (!(profile.createResourcePack() instanceof AbstractFileResourcePack datapack))
-                    continue;
+            for (AbstractFileResourcePack datapack : sortDataPacks(server.getDataPackManager())) {
 
                 File file = ((AbstractFileResourcePackAccessor)datapack).getBase();
                 if (datapack instanceof ZipResourcePack) {
@@ -79,6 +82,31 @@ public class EmbeddedAssetsLoaderServer implements DedicatedServerModInitializer
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private static List<AbstractFileResourcePack> sortDataPacks(ResourcePackManager manager) {
+        profiles.clear();
+        List<AbstractFileResourcePack> packs = new ArrayList<>();
+
+        for (ResourcePackProfile profile : manager.getProfiles()) {
+            if (!EmbeddedAssetsConfig.priority.contains(profile.getName()) && profile.createResourcePack() instanceof AbstractFileResourcePack)
+                EmbeddedAssetsConfig.priority.add(profile.getName());
+        }
+        EmbeddedAssetsConfig.save();
+
+        Collection<ResourcePackProfile> enabled = manager.getEnabledProfiles();
+        for (String profileName : EmbeddedAssetsConfig.priority) {
+            ResourcePackProfile profile = manager.getProfile(profileName);
+            if (enabled.contains(profile)) {
+                ResourcePack pack = profile.createResourcePack();
+                if (pack instanceof AbstractFileResourcePack frp) {
+                    packs.add(frp);
+                    profiles.add(profile);
+                }
+            }
+        }
+
+        return packs;
     }
 
     private static void readZipInputStream(InputStream rpInputStream, ZipOutputStream out) throws IOException {
