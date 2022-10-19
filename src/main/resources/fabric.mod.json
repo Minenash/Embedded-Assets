@@ -18,10 +18,8 @@
 
   "environment": "*",
   "entrypoints": {
-    "client": [
-      "net.fabricmc.example.client.EmbeddedAssetsLoaderClient"
-    ]
-
+    "client": [ "net.fabricmc.example.client.EmbeddedAssetsLoaderClient" ],
+    "server": [ "net.fabricmc.example.server.EmbeddedAssetsLoaderServer" ]
   },
   "mixins": [
     "modid.mixins.json"

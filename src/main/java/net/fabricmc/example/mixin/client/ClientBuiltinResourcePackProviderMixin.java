@@ -1,4 +1,4 @@
-package net.fabricmc.example.mixin;
+package net.fabricmc.example.mixin.client;
 
 import net.fabricmc.example.client.EmbeddedAssetsLoaderClient;
 import net.minecraft.client.resource.ClientBuiltinResourcePackProvider;
