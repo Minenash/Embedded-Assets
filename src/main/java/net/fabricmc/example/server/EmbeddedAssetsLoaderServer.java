@@ -3,9 +3,7 @@ package net.fabricmc.example.server;
 import com.google.gson.JsonElement;
 import com.mojang.bridge.game.PackType;
 import net.fabricmc.api.DedicatedServerModInitializer;
-import net.fabricmc.example.client.EmbeddedZipResourcePack;
-import net.fabricmc.example.mixin.server.AbstractFileResourcePackAccessor;
-import net.fabricmc.example.mixin.server.ZipResourcePackAccessor;
+import net.fabricmc.example.mixin.AbstractFileResourcePackAccessor;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.SharedConstants;
 import net.minecraft.resource.AbstractFileResourcePack;
@@ -14,7 +12,6 @@ import net.minecraft.resource.ZipResourcePack;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.JsonHelper;
-import org.spongepowered.asm.launch.platform.container.IContainerHandle;
 
 import java.io.*;
 import java.nio.file.Files;

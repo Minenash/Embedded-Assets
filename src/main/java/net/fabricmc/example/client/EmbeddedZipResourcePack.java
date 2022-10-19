@@ -127,7 +127,7 @@ public class EmbeddedZipResourcePack implements ResourcePack {
 
         EmbeddedZipResourcePack pack = new EmbeddedZipResourcePack(sourceName, data);
         PackResourceMetadata meta = pack.parseMetadata(PackResourceMetadata.READER);
-        EmbeddedAssetsLoaderClient.addPackToList(pack, sourceName.substring(sourceName.indexOf('/')+1),
+        EmbeddedAssetsLoaderClient.addPackToList(pack, sourceName.substring(9),
                 meta.getDescription(), ResourcePackCompatibility.from(meta, ResourceType.CLIENT_RESOURCES));
     }
 

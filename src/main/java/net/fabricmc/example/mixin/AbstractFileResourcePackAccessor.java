@@ -1,4 +1,4 @@
-package net.fabricmc.example.mixin.server;
+package net.fabricmc.example.mixin;
 
 import net.minecraft.resource.AbstractFileResourcePack;
 import org.spongepowered.asm.mixin.Mixin;

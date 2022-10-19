@@ -6,13 +6,13 @@
   "client": [
     "client.ClientBuiltinResourcePackProviderMixin"
   ],
-  "injectors": {
-    "defaultRequire": 1
-  },
   "server": [
     "server.ZipResourcePackAccessor"
   ],
   "mixins": [
-    "server.AbstractFileResourcePackAccessor"
-  ]
+    "AbstractFileResourcePackAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
 }

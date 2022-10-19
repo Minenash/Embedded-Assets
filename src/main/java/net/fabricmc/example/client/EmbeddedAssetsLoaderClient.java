@@ -1,8 +1,8 @@
 package net.fabricmc.example.client;
 
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.example.mixin.AbstractFileResourcePackAccessor;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.resource.*;
@@ -17,6 +17,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -57,17 +58,25 @@ public class EmbeddedAssetsLoaderClient implements ClientModInitializer {
 	}
 
 	private static void getResourcePack(AbstractFileResourcePack datapack, ResourcePackProfile profile) throws IOException {
-		InputStream stream = datapack.openRoot("assets");
-		if (stream != null) {
-			stream.close();
-			addPackToList(datapack, datapack.getName(), profile.getDescription(), profile.getCompatibility());
-		}
-
 		try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(datapack.openRoot("pack.mcmeta")))){
 			JsonElement assets = JsonHelper.deserialize(bufferedReader).get("pack").getAsJsonObject().get("assets");
 			if (assets != null)
-				EmbeddedZipResourcePack.createAndAdd(datapack.getName(), datapack.openRoot( assets.getAsString() ));
+				EmbeddedZipResourcePack.createAndAdd("embedded/" + datapack.getName(), datapack.openRoot( assets.getAsString() ));
 		}
+
+		boolean hasAssetsFolder = false;
+		if (datapack instanceof ZipResourcePack) {
+			InputStream stream = datapack.openRoot("assets");
+			if ( hasAssetsFolder = (stream != null) )
+				stream.close();
+		}
+		else
+			hasAssetsFolder = Files.isDirectory(((AbstractFileResourcePackAccessor) datapack).getBase().toPath().resolve("assets"));
+
+		if (hasAssetsFolder)
+			addPackToList(datapack, datapack.getName(), profile.getDescription(), profile.getCompatibility());
+
+
 	}
 
 	public static void addPackToList(ResourcePack pack, String name, Text description, ResourcePackCompatibility compat) {
