@@ -1,22 +1,26 @@
 package net.fabricmc.example.server;
 
+import com.google.common.hash.Hashing;
 import com.google.gson.JsonElement;
 import com.mojang.bridge.game.PackType;
-import com.mojang.brigadier.arguments.StringArgumentType;
 import net.fabricmc.api.DedicatedServerModInitializer;
 import net.fabricmc.example.mixin.AbstractFileResourcePackAccessor;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.SharedConstants;
 import net.minecraft.resource.*;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.command.CommandManager;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.JsonHelper;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -26,19 +30,24 @@ import java.util.zip.ZipOutputStream;
 public class EmbeddedAssetsServer implements DedicatedServerModInitializer {
 
     public Identifier id(String path) { return new Identifier("embedded_assets", path); }
+    public static MinecraftServer server;
 
     @Override
     public void onInitializeServer() {
         EmbeddedAssetsConfig.read();
+        LocalResourcePackHoster.startHttpd();
         ServerLifecycleEvents.SERVER_STARTED.register(id("load-resources"), EmbeddedAssetsServer::generateMasterPack);
         ServerLifecycleEvents.END_DATA_PACK_RELOAD.register(id("load-resources"), (server, resourceManager, success) -> generateMasterPack(server));
         CommandRegistrationCallback.EVENT.register(id("commands"), EmbeddedAssetsCommand::register);
-
+        ServerPlayConnectionEvents.JOIN.register(id("send-pack"), LocalResourcePackHoster::sendPack);
+        ServerLifecycleEvents.SERVER_STOPPED.register(id("stop-http"), server -> LocalResourcePackHoster.stopHttpd());
     }
+
 
     public static final List<ResourcePackProfile> profiles = new ArrayList<>();
     private static final List<String> files = new ArrayList<>();
-    private static void generateMasterPack(MinecraftServer server) {
+    public static void generateMasterPack(MinecraftServer server) {
+        EmbeddedAssetsServer.server = server;
         try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream("resources.zip"))) {
             files.clear();
 
@@ -66,8 +75,19 @@ public class EmbeddedAssetsServer implements DedicatedServerModInitializer {
 
             }
 
-            zos.putNextEntry(new ZipEntry("pack.mcmeta"));
-            zos.write("""
+            addMetadata(zos);
+            zos.flush();
+
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        LocalResourcePackHoster.hashCache = LocalResourcePackHoster.calcSHA1();
+    }
+
+    public static void addMetadata(ZipOutputStream zos) throws IOException {
+        zos.putNextEntry(new ZipEntry("pack.mcmeta"));
+        zos.write("""
                     {
                       "pack": {
                         "pack_format": %s,
@@ -75,13 +95,7 @@ public class EmbeddedAssetsServer implements DedicatedServerModInitializer {
                       }
                     }
                     """.formatted(SharedConstants.getGameVersion().getPackVersion(PackType.RESOURCE)).getBytes());
-            zos.closeEntry();
-
-            zos.flush();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        zos.closeEntry();
     }
 
     private static List<AbstractFileResourcePack> sortDataPacks(ResourcePackManager manager) {

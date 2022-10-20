@@ -12,11 +12,20 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+@SuppressWarnings("InstantiationOfUtilityClass")
 public class EmbeddedAssetsConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().excludeFieldsWithModifiers(Modifier.PRIVATE).create();
     private static final Path PATH = FabricLoader.getInstance().getConfigDir().resolve("EmbeddedAssetsLoader.json");
 
     public static List<String> priority = new ArrayList<>();
+    public static LocalResourcePackHosterConfig localResourcePackHosterConfig = new LocalResourcePackHosterConfig();
+
+    public static class LocalResourcePackHosterConfig {
+        public boolean enabled = false;
+        public int port = 25564;
+        public boolean verboseLogging = false;
+        public boolean local = false;
+    }
 
     public static void read() {
         if (!Files.exists(PATH)) {
