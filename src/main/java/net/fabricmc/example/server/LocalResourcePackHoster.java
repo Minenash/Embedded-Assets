@@ -19,8 +19,6 @@ import java.security.MessageDigest;
 import java.text.DateFormat;
 import java.util.Date;
 import java.util.Scanner;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -41,20 +39,7 @@ public class LocalResourcePackHoster extends Thread {
             7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -97, 0, 0, 0, 97, 115, 115, 101, 116, 115, 47, 80, 75, 5, 6, 0, 0,
             0, 0, 2, 0, 2, 0, 110, 0, 0, 0, -42, 0, 0, 0, 0, 0};
 
-    private static String EMPTY_PACK_SHA1 = Hashing.sha1().hashBytes(EMPTY_PACK).toString();
-
-    // Some reason the results produced by ByteArrayOutputStream is different (and broken) compared to FileOutputStream
-//    static {
-//        try (FileOutputStream stream = new FileOutputStream("AHHH.zip"); ZipOutputStream zos = new ZipOutputStream(stream)) {
-//            EmbeddedAssetsServer.addMetadata(zos);
-//            zos.putNextEntry(new ZipEntry("assets/"));
-//            zos.closeEntry();
-//            zos.flush();
-//            stream.flush();
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//    }
+    private static final String EMPTY_PACK_SHA1 = Hashing.sha1().hashBytes(EMPTY_PACK).toString();
 
     public static volatile boolean running = false;
     public static String url = "";
@@ -64,27 +49,25 @@ public class LocalResourcePackHoster extends Thread {
     public static String hashCache = "";
 
     public static void sendPack(ServerPlayNetworkHandler handler, PacketSender sender, MinecraftServer server) {
-        if (EmbeddedAssetsConfig.localResourcePackHosterConfig.enabled)
-            new Timer().schedule(new TimerTask() {
-                @Override
-                public void run() {
-                    sendPack(handler.player);
-                }
-            }, 1000);
+        System.out.println("AHH1: " + EmbeddedAssetsConfig.localResourcePackHostingConfig.enabled);
+        System.out.println("AHH2: " + EmbeddedAssetsConfig.localResourcePackHostingConfig.verboseLogging);
+        if (EmbeddedAssetsConfig.localResourcePackHostingConfig.enabled) {
+            sendPack(handler.player);
+        }
     }
     public static void sendPack(ServerPlayerEntity player) {
-        player.sendResourcePackUrl(url + hashCache + ".zip", hashCache, true, Text.literal("For Datapacks"));
+        player.sendResourcePackUrl(url + hashCache + ".zip", hashCache, EmbeddedAssetsConfig.localResourcePackHostingConfig.requireClientToHavePack, EmbeddedAssetsConfig.getPromptMsg());
     }
     public static void reset(ServerPlayerEntity player) {
-        player.sendResourcePackUrl(empty_url, EMPTY_PACK_SHA1, true, Text.literal("For Datapacks"));
+        player.sendResourcePackUrl(empty_url, EMPTY_PACK_SHA1, EmbeddedAssetsConfig.localResourcePackHostingConfig.requireClientToHavePack, Text.literal("This removes the Server Resource Pack"));
     }
 
     public static boolean startHttpd() {
-        if (!EmbeddedAssetsConfig.localResourcePackHosterConfig.enabled)
+        if (!EmbeddedAssetsConfig.localResourcePackHostingConfig.enabled)
             return false;
         try {
-            int port = EmbeddedAssetsConfig.localResourcePackHosterConfig.port;
-            if (EmbeddedAssetsConfig.localResourcePackHosterConfig.local)
+            int port = EmbeddedAssetsConfig.localResourcePackHostingConfig.port;
+            if (EmbeddedAssetsConfig.localResourcePackHostingConfig.local)
                 ip = "127.0.0.1";
             else
                 try (InputStream stream = new URL( "https://api.ipify.org" ).openStream();
@@ -169,7 +152,7 @@ public class LocalResourcePackHoster extends Thread {
 
 
     private static Pair<InputStream,Long> verbose( Object object ) {
-        if ( EmbeddedAssetsConfig.localResourcePackHosterConfig.verboseLogging)
+        if ( EmbeddedAssetsConfig.localResourcePackHostingConfig.verboseLogging)
             System.out.println( object.toString() );
         return null;
     }
@@ -190,16 +173,14 @@ public class LocalResourcePackHoster extends Thread {
             return Pair.of(new ByteArrayInputStream(EMPTY_PACK), (long) EMPTY_PACK.length);
         }
 
-        Path path = Path.of("resources.zip");
         if (!request.equals(hashCache+".zip"))
             return verbose( player + "(" + clientAddrs + ") requested a file that wasn't '" + hashCache + ".zip' or '/empty.zip', Aborting..." );
 
         if (!Files.exists(path))
             return verbose("resources.zip file is missing!" );
 
-        verbose( "Serving 'resources.zip' to " + player + "(" + clientAddrs + ")" );
-
         try {
+            verbose( "Serving 'resources.zip' to " + player + "(" + clientAddrs + ")" );
             return Pair.of(Files.newInputStream(path), Files.size(path));
         }
         catch (IOException e) {

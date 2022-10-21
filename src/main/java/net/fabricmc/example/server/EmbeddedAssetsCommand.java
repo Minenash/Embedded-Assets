@@ -13,6 +13,7 @@ import net.minecraft.resource.ResourcePackProfile;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
 
 import java.util.Timer;
@@ -21,8 +22,9 @@ import java.util.concurrent.CompletableFuture;
 
 import static com.mojang.brigadier.arguments.BoolArgumentType.bool;
 import static com.mojang.brigadier.arguments.IntegerArgumentType.integer;
+import static com.mojang.brigadier.arguments.StringArgumentType.greedyString;
 import static com.mojang.brigadier.arguments.StringArgumentType.string;
-import static net.fabricmc.example.server.EmbeddedAssetsConfig.localResourcePackHosterConfig;
+import static net.fabricmc.example.server.EmbeddedAssetsConfig.localResourcePackHostingConfig;
 import static net.minecraft.server.command.CommandManager.argument;
 import static net.minecraft.server.command.CommandManager.literal;
 
@@ -47,8 +49,10 @@ public class EmbeddedAssetsCommand {
                     .then(literal("configure")
                         .then(argument("port", integer())
                             .then(argument("local", bool())
-                                .then(argument("verboseLogging", bool())
-                                    .executes( EmbeddedAssetsCommand::configureLocalHosting )))))
+                                .then(argument("verbose_logging", bool())
+                                    .then(argument("require_pack", bool())
+                                        .then(argument("prompt_msg", greedyString())
+                                            .executes( EmbeddedAssetsCommand::configureLocalHosting )))))))
                 )
 
         );
@@ -75,13 +79,12 @@ public class EmbeddedAssetsCommand {
         if (EmbeddedAssetsServer.profiles.isEmpty())
             return sendMessage(context, "No Resourced Data Packs are Loaded", true);
 
-        StringBuilder builder = new StringBuilder("§8§u[§aResourced Data Packs§8]§r");
-
+        MutableText text = Text.literal("\n§8§u[§aResourced Data Packs§8]§r");
         for (ResourcePackProfile profile : EmbeddedAssetsServer.profiles) {
-            builder.append("\n\n§l").append(profile.getName());
-            builder.append("\n").append(profile.getDescription());
+            text.append("\n\n§l").append(profile.getName());
+            text.append("\n§r").append(profile.getDescription());
         }
-        context.getSource().sendFeedback(Text.literal(builder.toString()), false);
+        context.getSource().sendFeedback(text, false);
         return 1;
     }
 
@@ -89,7 +92,7 @@ public class EmbeddedAssetsCommand {
         if (EmbeddedAssetsServer.profiles.isEmpty())
             return sendMessage(context, "No Resourced Data Packs are Loaded", true);
 
-        StringBuilder builder = new StringBuilder("§8§u[§aResourced Data Pack Priorities§8]§r");
+        StringBuilder builder = new StringBuilder("\n§8§u[§aResourced Data Pack Priorities§8]§r");
 
         boolean doubleDigits = EmbeddedAssetsConfig.priority.size() >= 10;
         for (int i = 0; i < EmbeddedAssetsConfig.priority.size(); i++) {
@@ -125,42 +128,50 @@ public class EmbeddedAssetsCommand {
 
     private static int statusLocalHosting(CommandContext<ServerCommandSource> context) {
         context.getSource().sendFeedback(Text.literal(
-                "§8§u[§aLocal Pack Hosting§8]§r"
-                + "\n\n§7Enabled: §e" + localResourcePackHosterConfig.enabled
-                + "\n§7IP: §e" + (LocalResourcePackHoster.ip.isEmpty() ? "N/A" : LocalResourcePackHoster.ip) + (localResourcePackHosterConfig.local ? "(local)" : "")
-                + "\n§7Port: §e" + localResourcePackHosterConfig.port
-                + "\n§7Verbose Logging: §e" + localResourcePackHosterConfig.verboseLogging
-                + "\n\n§7Enable: §e/embedded_assets pack_hosting enable"
+                "\n§8§u[§aLocal Pack Hosting§8]§r"
+                + "\n\n§7Enabled: §e" + localResourcePackHostingConfig.enabled
+                + "\n§7IP: §e" + (LocalResourcePackHoster.ip.isEmpty() ? "N/A" : LocalResourcePackHoster.ip) + (localResourcePackHostingConfig.local ? "(local)" : "")
+                + "\n§7Port: §e" + localResourcePackHostingConfig.port
+                + "\n§7Verbose Logging: §e" + localResourcePackHostingConfig.verboseLogging
+                + "\n§7Require Pack: §e" + localResourcePackHostingConfig.requireClientToHavePack
+                + "\n§7Prompt Msg: §e").append(EmbeddedAssetsConfig.getPromptMsg()).append(
+                  "\n\n§7Enable: §e/embedded_assets pack_hosting enable"
                 + "\n§7Disable: §e/embedded_assets pack_hosting disable"
-                + "\n§7Configure:\n §e/embedded_assets pack_hosting configure <port> <local> <verbose_logging>"
+                + "\n§7Configure: §e/embedded_assets pack_hosting configure <port> <local> <verbose_logging> <require_pack> <pack_msg>"
         ), false);
         return 1;
     }
 
     private static int enableLocalHosting(CommandContext<ServerCommandSource> context) {
-        if (localResourcePackHosterConfig.enabled)
-            LocalResourcePackHoster.stopHttpd();
-        else {
-            localResourcePackHosterConfig.enabled = true;
-            EmbeddedAssetsConfig.save();
+        try {
+            if (localResourcePackHostingConfig.enabled)
+                LocalResourcePackHoster.stopHttpd();
+            else {
+                localResourcePackHostingConfig.enabled = true;
+                EmbeddedAssetsConfig.save();
+            }
+
+            if (LocalResourcePackHoster.startHttpd())
+                sendMessage(context, "The Local Pack Server has been started", false);
+            else
+                sendMessage(context, "Failed to start Local Pack Server", true);
+
+            for (ServerPlayerEntity player : context.getSource().getServer().getPlayerManager().getPlayerList())
+                LocalResourcePackHoster.sendPack(player);
+
+            return 1;
         }
-
-        if (LocalResourcePackHoster.startHttpd())
-            sendMessage(context, "The Local Pack Server has been started", false);
-        else
-            sendMessage(context, "Failed to start Local Pack Server", true);
-
-        for (ServerPlayerEntity player : context.getSource().getServer().getPlayerManager().getPlayerList())
-            LocalResourcePackHoster.sendPack(player);
-
-        return 1;
+        catch (Exception e) {
+            e.printStackTrace();
+            return 0;
+        }
     }
 
     private static int disableLocalHosting(CommandContext<ServerCommandSource> context) {
-        if (!localResourcePackHosterConfig.enabled && !LocalResourcePackHoster.running)
+        if (!localResourcePackHostingConfig.enabled && !LocalResourcePackHoster.running)
             return sendMessage(context, "The Local Pack Server wasn't running", true);
         else {
-            localResourcePackHosterConfig.enabled = false;
+            localResourcePackHostingConfig.enabled = false;
             EmbeddedAssetsConfig.save();
 
             for (ServerPlayerEntity player : context.getSource().getServer().getPlayerManager().getPlayerList())
@@ -179,9 +190,11 @@ public class EmbeddedAssetsCommand {
     }
 
     private static int configureLocalHosting(CommandContext<ServerCommandSource> context) {
-        localResourcePackHosterConfig.port = IntegerArgumentType.getInteger(context, "port");
-        localResourcePackHosterConfig.local = BoolArgumentType.getBool(context, "local");
-        localResourcePackHosterConfig.verboseLogging = BoolArgumentType.getBool(context, "verboseLogging");
+        localResourcePackHostingConfig.port = IntegerArgumentType.getInteger(context, "port");
+        localResourcePackHostingConfig.local = BoolArgumentType.getBool(context, "local");
+        localResourcePackHostingConfig.verboseLogging = BoolArgumentType.getBool(context, "verbose_logging");
+        localResourcePackHostingConfig.requireClientToHavePack = BoolArgumentType.getBool(context, "require_pack");
+        localResourcePackHostingConfig.promptMsg = StringArgumentType.getString(context, "prompt_msg");
         EmbeddedAssetsConfig.save();
         return sendMessage(context, "The Local Pack Server has been configured. Do §e/embedded_assets pack_hosting enable§7 to (re)start the server", false);
     }

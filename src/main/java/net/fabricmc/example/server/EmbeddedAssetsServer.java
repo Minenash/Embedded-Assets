@@ -50,6 +50,7 @@ public class EmbeddedAssetsServer implements DedicatedServerModInitializer {
         EmbeddedAssetsServer.server = server;
         try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream("resources.zip"))) {
             files.clear();
+            addBasePack(zos);
 
             for (AbstractFileResourcePack datapack : sortDataPacks(server.getDataPackManager())) {
 
@@ -83,6 +84,20 @@ public class EmbeddedAssetsServer implements DedicatedServerModInitializer {
             e.printStackTrace();
         }
         LocalResourcePackHoster.hashCache = LocalResourcePackHoster.calcSHA1();
+    }
+
+    public static void addBasePack(ZipOutputStream zos) throws IOException {
+        if (EmbeddedAssetsConfig.basePack.isEmpty())
+            return;
+        File file = new File(EmbeddedAssetsConfig.basePack);
+        if (!file.exists())
+            return;
+
+        if (file.isDirectory())
+            readDirFromDir(file.toPath(), zos);
+
+        else
+            readZipInputStream(new ZipInputStream(new FileInputStream(file)), zos);
     }
 
     public static void addMetadata(ZipOutputStream zos) throws IOException {
@@ -138,6 +153,7 @@ public class EmbeddedAssetsServer implements DedicatedServerModInitializer {
                 files.add(entry.getName());
             }
         }
+        rpInputStream.close();
     }
 
     private static void readDirFromZip(ZipFile zip, ZipOutputStream out) throws IOException {
