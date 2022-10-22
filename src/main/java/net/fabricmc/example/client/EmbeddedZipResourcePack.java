@@ -6,9 +6,7 @@ import com.google.common.collect.Sets;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resource.AbstractFileResourcePack;
 import net.minecraft.resource.ResourcePack;
-import net.minecraft.resource.ResourcePackCompatibility;
 import net.minecraft.resource.ResourceType;
-import net.minecraft.resource.metadata.PackResourceMetadata;
 import net.minecraft.resource.metadata.ResourceMetadataReader;
 import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.Nullable;
@@ -17,8 +15,6 @@ import org.slf4j.Logger;
 import java.io.*;
 import java.util.*;
 import java.util.function.Predicate;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 public class EmbeddedZipResourcePack implements ResourcePack {
 
@@ -108,26 +104,5 @@ public class EmbeddedZipResourcePack implements ResourcePack {
 
     @Override
     public void close() {}
-
-    public static void createAndAdd(String sourceName, InputStream rpInputStream) throws IOException {
-        if (rpInputStream == null || rpInputStream.available() <= 0)
-            return;
-
-        ZipInputStream stream = new ZipInputStream(rpInputStream);
-        Map<String,byte[]> data = new HashMap<>();
-        byte[] buffer = new byte[2048];
-
-        for (ZipEntry entry; (entry = stream.getNextEntry()) != null;) {
-            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-            for (int len; (len = stream.read(buffer)) > 0; )
-                bytes.write(buffer, 0, len);
-            data.put(entry.getName(), bytes.toByteArray());
-        }
-
-        EmbeddedZipResourcePack pack = new EmbeddedZipResourcePack(sourceName, data);
-        PackResourceMetadata meta = pack.parseMetadata(PackResourceMetadata.READER);
-        EmbeddedAssetsClient.addPackToList(pack, sourceName.substring(9),
-                meta.getDescription(), ResourcePackCompatibility.from(meta, ResourceType.CLIENT_RESOURCES));
-    }
 
 }
