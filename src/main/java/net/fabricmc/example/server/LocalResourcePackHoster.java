@@ -7,6 +7,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
+import org.apache.commons.codec.digest.DigestUtils;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -17,6 +18,7 @@ import java.nio.file.Path;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.text.DateFormat;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Scanner;
 import java.util.regex.Matcher;
@@ -49,8 +51,6 @@ public class LocalResourcePackHoster extends Thread {
     public static String hashCache = "";
 
     public static void sendPack(ServerPlayNetworkHandler handler, PacketSender sender, MinecraftServer server) {
-        System.out.println("AHH1: " + EmbeddedAssetsConfig.localResourcePackHostingConfig.enabled);
-        System.out.println("AHH2: " + EmbeddedAssetsConfig.localResourcePackHostingConfig.verboseLogging);
         if (EmbeddedAssetsConfig.localResourcePackHostingConfig.enabled) {
             sendPack(handler.player);
         }
@@ -102,33 +102,9 @@ public class LocalResourcePackHoster extends Thread {
     }
 
     public static String calcSHA1() {
-        try {
-            FileInputStream fileInputStream = new FileInputStream("resources.zip");
-            MessageDigest digest = MessageDigest.getInstance("SHA-1");
-            DigestInputStream digestInputStream = new DigestInputStream(fileInputStream, digest);
-            byte[] bytes = new byte[1024];
-            // read all file content
-            while (digestInputStream.read(bytes) > 0) ;
-
-            byte[] resultByteArry = digest.digest();
-            digestInputStream.close();
-            return bytesToHexString(resultByteArry);
-        }
-        catch (Exception e) {
-            e.printStackTrace();
-            return "";
-        }
-    }
-
-    public static String bytesToHexString(byte[] bytes) {
-        StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) {
-            int value = b & 0xFF;
-            if (value < 16)
-                sb.append("0");
-            sb.append(Integer.toHexString(value).toUpperCase());
-        }
-        return sb.toString();
+        try { return DigestUtils.sha1Hex( Files.readAllBytes(Path.of("resources.zip")) ); }
+        catch (Exception e) { e.printStackTrace(); }
+        return "";
     }
 
     @Override

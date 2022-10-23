@@ -11,15 +11,19 @@ import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @SuppressWarnings("InstantiationOfUtilityClass")
 public class EmbeddedAssetsConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().excludeFieldsWithModifiers(Modifier.PRIVATE).create();
     private static final Path PATH = FabricLoader.getInstance().getConfigDir().resolve("EmbeddedAssetsLoader.json");
 
+    public static boolean regenerateOnReload = false;
     public static String basePack = "";
     public static List<String> priority = new ArrayList<>();
+    public static Set<String> disabledResourcePacks = new HashSet<>();
     public static LocalResourcePackHostingConfig localResourcePackHostingConfig = new LocalResourcePackHostingConfig();
 
     public static class LocalResourcePackHostingConfig {
@@ -40,17 +44,19 @@ public class EmbeddedAssetsConfig {
         }
     }
 
-    public static void read() {
+    public static boolean read() {
         if (!Files.exists(PATH)) {
             save();
-            return;
+            return true;
         }
 
         try (BufferedReader reader = Files.newBufferedReader(PATH)) {
             GSON.fromJson(reader, EmbeddedAssetsConfig.class);
+            return true;
         } catch (IOException e) {
             System.out.println("Failed to read config, priorities unavailable until config is fixed:");
             e.printStackTrace();
+            return false;
         }
     }
 

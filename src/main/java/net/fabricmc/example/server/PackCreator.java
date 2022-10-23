@@ -1,88 +1,128 @@
 package net.fabricmc.example.server;
 
-import com.google.gson.JsonElement;
+import com.google.gson.*;
+import com.mojang.datafixers.util.Pair;
 import net.fabricmc.example.mixin.AbstractFileResourcePackAccessor;
 import net.minecraft.resource.AbstractFileResourcePack;
 import net.minecraft.resource.ZipResourcePack;
-import net.minecraft.util.JsonHelper;
+import net.minecraft.resource.metadata.ResourceFilter;
+
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.nio.file.attribute.FileTime;
+import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class PackCreator {
 
     public Map<String,byte[]> workingData = new HashMap<>();
+    public Map<String,FileTime> lastModified = new HashMap<>();
+    public Map<String,JsonObject> mergables = new HashMap<>();
+    public List<ResourceFilter> filters = new ArrayList<>();
+    public ResourceFilter tempFilter = null;
 
-    public Map<String,byte[]> create(List<AbstractFileResourcePack> packs) throws IOException {
+    public Pair<Map<String,byte[]>,Map<String,FileTime>> create(List<AbstractFileResourcePack> packs) throws IOException {
         workingData.put("pack.mcmeta", EmbeddedAssetsServer.metadata);
+        lastModified.put("pack.mcmeta", FileTime.fromMillis(0));
         for (AbstractFileResourcePack datapack : packs) {
-            File file = ((AbstractFileResourcePackAccessor)datapack).getBase();
+            Path path = ((AbstractFileResourcePackAccessor)datapack).getBase().toPath();
             if (datapack instanceof ZipResourcePack)
-                readFromZip(new FileInputStream(file));
+                readFromZip(Files.newInputStream(path));
             else {
-                Path path = file.toPath().resolve("assets");
-                if (Files.exists(path))
-                    readDirFromDir(path);
-                for (File possiblePack : file.listFiles())
-                    if (possiblePack.isFile() && possiblePack.getName().endsWith(".zip"))
-                        readZip(workingData, new FileInputStream(possiblePack));
+                Path assets = path.resolve("assets");
+                if (Files.exists(assets)) {
+                    readDirFromDir(assets);
+                    Path meta = path.resolve("pack.mcmeta");
+                    if (Files.exists(meta)) {
+                        processMetaForFilter(Files.readAllBytes(meta));
+                        maybeAddFilter();
+                    }
+                }
+                for (Path possiblePack : Files.list(path).toList())
+                    if (Files.isRegularFile(possiblePack) && possiblePack.endsWith(".zip"))
+                        readZip( Files.newInputStream(possiblePack) );
             }
 
         }
+        addBasePack();
 
-        return workingData;
+        for (var entry : mergables.entrySet()) {
+            workingData.put(entry.getKey(), GSON.toJson(entry.getValue()).getBytes(StandardCharsets.UTF_8));
+            lastModified.putIfAbsent(entry.getKey(), FileTime.fromMillis(0));
+        }
+
+
+        return Pair.of(workingData, lastModified);
     }
 
-    private static void readZip(Map<String,byte[]> data, InputStream rpInputStream) throws IOException {
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private void readZip(InputStream rpInputStream) throws IOException {
         ZipInputStream stream = new ZipInputStream(rpInputStream);
 
         for (ZipEntry entry; (entry = stream.getNextEntry()) != null;) {
-            if ((entry.getName().startsWith("assets/") && !data.containsKey(entry.getName())) ) {
-                ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-                stream.transferTo(bytes);
-                data.put(entry.getName(), bytes.toByteArray());
-                bytes.close();
+            String name = entry.getName();
+            if ((name.startsWith("assets/") && !workingData.containsKey(name) && notBlocked(name)) ) {
+                Mergable mergable = mergeType(name);
+                if (mergable != null)
+                    mergeJsonObjects(mergable, name, mergables, stream.readAllBytes());
+                else {
+                    workingData.put(name, stream.readAllBytes());
+                    lastModified.put(name, entry.getLastModifiedTime());
+                }
             }
+            else if (name.equals("pack.mcmeta"))
+                processMetaForFilter( stream.readAllBytes() );
         }
+        maybeAddFilter();
         rpInputStream.close();
     }
 
     private void readFromZip(InputStream rpInputStream) throws IOException {
         ZipInputStream stream = new ZipInputStream(rpInputStream);
-        Map<String,byte[]> data = new TreeMap<>();
+        List<byte[]> zips = new ArrayList<>();
 
         for (ZipEntry entry; (entry = stream.getNextEntry()) != null;) {
-            boolean isZip = !entry.isDirectory() && !entry.getName().contains("/") && entry.getName().endsWith(".zip");
-
-            if (isZip || (entry.getName().startsWith("assets/") && !workingData.containsKey(entry.getName())) ) {
-                ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-                stream.transferTo(bytes);
-                if (isZip)
-                    readZip(data, new ByteArrayInputStream(bytes.toByteArray()));
-                else
-                    workingData.put(entry.getName(), bytes.toByteArray());
-                bytes.close();
+            String name = entry.getName();
+            if (name.startsWith("assets/") && !workingData.containsKey(name) && notBlocked(name)) {
+                Mergable mergable = mergeType(name);
+                if (mergable != null)
+                    mergeJsonObjects(mergable, name, mergables, stream.readAllBytes());
+                else {
+                    workingData.put(name, stream.readAllBytes());
+                    lastModified.put(name, entry.getLastModifiedTime());
+                }
             }
+            else if (name.equals("pack.mcmeta"))
+                processMetaForFilter( stream.readAllBytes() );
+            else if ( !entry.isDirectory() && !entry.getName().contains("/") && entry.getName().endsWith(".zip") )
+                zips.add(stream.readAllBytes());
         }
-        for (var entry : data.entrySet()) {
-            if (!workingData.containsKey(entry.getKey()))
-                workingData.put(entry.getKey(), entry.getValue());
-        }
+        maybeAddFilter();
+
+        for (byte[] zip : zips)
+            readZip(new ByteArrayInputStream( zip ));
+
         rpInputStream.close();
     }
 
     private void readDirFromDir(Path mainPath) throws IOException {
         Files.walk(mainPath).forEach( p -> {
             String pathStr = "assets/" + mainPath.relativize(p);
-            if (!workingData.containsKey(pathStr) && !Files.isDirectory(p))
-                try { readBytes(pathStr, Files.newInputStream(p)); }
+            if (!workingData.containsKey(pathStr) && !Files.isDirectory(p) && notBlocked(pathStr))
+                try (InputStream input = Files.newInputStream(p)) {
+                    Mergable mergable = mergeType(pathStr);
+                    if (mergable != null)
+                        mergeJsonObjects(mergable, pathStr, mergables, input.readAllBytes());
+                    else {
+                        workingData.put(pathStr, input.readAllBytes());
+                        lastModified.put(pathStr, Files.getLastModifiedTime(p));
+                    }
+
+                }
                 catch (IOException e) { e.printStackTrace(); }
         } );
     }
@@ -97,15 +137,84 @@ public class PackCreator {
         if (file.isDirectory())
             readDirFromDir(file.toPath());
         else
-            readZip(workingData, new FileInputStream(file));
+            readZip(new FileInputStream(file));
     }
 
-    private void readBytes(String path, InputStream input) throws IOException {
-        try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-            input.transferTo(output);
-            input.close();
-            workingData.put(path, output.toByteArray());
+    public void processMetaForFilter(byte[] meta) {
+        try { tempFilter = ResourceFilter.READER.fromJson( GSON.fromJson(new String(meta), JsonObject.class) ); }
+        catch (Exception ignored) {}
+    }
+    public void maybeAddFilter() {
+        if (tempFilter != null) {
+            filters.add(tempFilter);
+            tempFilter = null;
         }
+    }
+    public boolean notBlocked(String name) {
+        if (filters.isEmpty())
+            return true;
+        int index = name.indexOf('/', 7);
+        String namespace = name.substring(7,index);
+        String path = name.substring(index+1);
+
+        for (ResourceFilter filter : filters)
+            if (filter.isNamespaceBlocked(namespace) && filter.isPathBlocked(path))
+                return false;
+        return true;
+
+    }
+
+    enum Mergable {MERGE_ROOT, MERGE_PROVIDERS}
+    public static Mergable mergeType(String name) {
+        int index = name.indexOf('/', 7) + 1;
+        if (index == 0 || !name.endsWith(".json"))
+            return null;
+        name = name.substring(index);
+        if (name.equals("sounds.json") || name.startsWith("lang/"))
+            return Mergable.MERGE_ROOT;
+        if (name.startsWith("font/"))
+            return Mergable.MERGE_PROVIDERS;
+        return null;
+    }
+
+
+    public static void mergeJsonObjects(Mergable type, String name, Map<String,JsonObject> mergables, byte[] fromBytes) {
+        try {
+            JsonObject fromEntry = GSON.fromJson(new String(fromBytes), JsonElement.class).getAsJsonObject();
+            JsonObject inMap = mergables.get(name);
+            mergables.put(name, mergeJsonObjects(type, inMap, fromEntry));
+        }
+        catch (JsonSyntaxException e) {
+            System.out.println("Malformed json: " + name);
+        }
+
+
+    }
+
+    public static JsonObject mergeJsonObjects(Mergable type, JsonObject inMap, JsonObject fromEntry) {
+        if (inMap == null)
+           return fromEntry;
+
+        else if (type == Mergable.MERGE_ROOT) {
+            for (Map.Entry<String,JsonElement> a : fromEntry.entrySet()) {
+                System.out.println(a.getKey() + ": " + a.getValue());
+                if (!inMap.has(a.getKey()))
+                    inMap.add(a.getKey(), a.getValue());
+            }
+        }
+
+        else if (type == Mergable.MERGE_PROVIDERS) {
+            JsonArray into = inMap.getAsJsonArray("providers");
+            if (into == null)
+                into = new JsonArray();
+
+            JsonArray from = inMap.getAsJsonArray("providers");
+            if (from != null)
+                into.addAll(from);
+
+            inMap.add("providers", into);
+        }
+        return inMap;
     }
 
 }
