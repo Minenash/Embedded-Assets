@@ -1,8 +1,7 @@
-package net.fabricmc.example.client;
+package com.minenash.embedded_assets.client;
 
-import com.google.gson.JsonElement;
 import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.example.mixin.AbstractFileResourcePackAccessor;
+import com.minenash.embedded_assets.mixin.AbstractFileResourcePackAccessor;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.resource.*;
@@ -10,7 +9,6 @@ import net.minecraft.resource.metadata.PackResourceMetadata;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.JsonHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

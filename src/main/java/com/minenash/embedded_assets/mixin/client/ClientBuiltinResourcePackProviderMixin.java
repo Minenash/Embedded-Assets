@@ -1,6 +1,6 @@
-package net.fabricmc.example.mixin.client;
+package com.minenash.embedded_assets.mixin.client;
 
-import net.fabricmc.example.client.EmbeddedAssetsClient;
+import com.minenash.embedded_assets.client.EmbeddedAssetsClient;
 import net.minecraft.client.resource.ClientBuiltinResourcePackProvider;
 import net.minecraft.resource.ResourcePackProfile;
 import org.spongepowered.asm.mixin.Mixin;

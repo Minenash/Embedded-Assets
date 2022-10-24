@@ -1,4 +1,4 @@
-package net.fabricmc.example.server;
+package com.minenash.embedded_assets.server;
 
 import net.fabricmc.api.DedicatedServerModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;

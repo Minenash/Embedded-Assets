@@ -1,4 +1,4 @@
-package net.fabricmc.example.client;
+package com.minenash.embedded_assets.client;
 
 import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;

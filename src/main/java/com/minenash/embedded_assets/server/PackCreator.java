@@ -1,8 +1,8 @@
-package net.fabricmc.example.server;
+package com.minenash.embedded_assets.server;
 
 import com.google.gson.*;
 import com.mojang.bridge.game.PackType;
-import net.fabricmc.example.mixin.AbstractFileResourcePackAccessor;
+import com.minenash.embedded_assets.mixin.AbstractFileResourcePackAccessor;
 import net.minecraft.SharedConstants;
 import net.minecraft.resource.AbstractFileResourcePack;
 import net.minecraft.resource.ZipResourcePack;

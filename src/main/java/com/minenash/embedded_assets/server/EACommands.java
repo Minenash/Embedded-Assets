@@ -1,4 +1,4 @@
-package net.fabricmc.example.server;
+package com.minenash.embedded_assets.server;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
@@ -26,7 +26,7 @@ import static com.mojang.brigadier.arguments.BoolArgumentType.bool;
 import static com.mojang.brigadier.arguments.IntegerArgumentType.integer;
 import static com.mojang.brigadier.arguments.StringArgumentType.greedyString;
 import static com.mojang.brigadier.arguments.StringArgumentType.string;
-import static net.fabricmc.example.server.EAConfig.localResourcePackHostingConfig;
+import static com.minenash.embedded_assets.server.EAConfig.localResourcePackHostingConfig;
 import static net.minecraft.server.command.CommandManager.argument;
 import static net.minecraft.server.command.CommandManager.literal;
 

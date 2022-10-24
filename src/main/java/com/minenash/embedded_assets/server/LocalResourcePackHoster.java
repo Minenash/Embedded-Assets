@@ -1,4 +1,4 @@
-package net.fabricmc.example.server;
+package com.minenash.embedded_assets.server;
 
 import com.google.common.hash.Hashing;
 import com.ibm.icu.impl.Pair;

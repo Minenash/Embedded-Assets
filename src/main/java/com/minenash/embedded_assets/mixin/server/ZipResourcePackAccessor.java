@@ -1,4 +1,4 @@
-package net.fabricmc.example.mixin.server;
+package com.minenash.embedded_assets.mixin.server;
 
 import net.minecraft.resource.ZipResourcePack;
 import org.spongepowered.asm.mixin.Mixin;

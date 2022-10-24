@@ -1,4 +1,4 @@
-package net.fabricmc.example.server;
+package com.minenash.embedded_assets.server;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -15,7 +15,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-@SuppressWarnings("InstantiationOfUtilityClass")
 public class EAConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().excludeFieldsWithModifiers(Modifier.PRIVATE).create();
     private static final Path PATH = FabricLoader.getInstance().getConfigDir().resolve("Embedded_Assets.json");

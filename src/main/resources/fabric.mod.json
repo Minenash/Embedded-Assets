@@ -1,32 +1,32 @@
 {
   "schemaVersion": 1,
-  "id": "modid",
+  "id": "embedded_assets",
   "version": "${version}",
 
-  "name": "Example Mod",
-  "description": "This is an example description! Tell everyone what your mod is about!",
+  "name": "Embedded Assets",
+  "description": "Loads ResourcePacks contained in DataPacks when loaded!",
   "authors": [
-    "Me!"
+    "Minenash"
   ],
   "contact": {
     "homepage": "https://fabricmc.net/",
     "sources": "https://github.com/FabricMC/fabric-example-mod"
   },
 
-  "license": "CC0-1.0",
-  "icon": "assets/modid/icon.png",
+  "license": "LGPL-3",
+  "icon": "assets/embedded_assets/icon.png",
 
   "environment": "*",
   "entrypoints": {
     "client": [
-      "net.fabricmc.example.client.EmbeddedAssetsClient"
+      "com.minenash.embedded_assets.client.EmbeddedAssetsClient"
     ],
     "server": [
-      "net.fabricmc.example.server.EmbeddedAssetsServer"
+      "com.minenash.embedded_assets.server.EmbeddedAssetsServer"
     ]
   },
   "mixins": [
-    "modid.mixins.json"
+    "embedded_assets.mixins.json"
   ],
 
   "depends": {
@@ -34,8 +34,5 @@
     "fabric-api": "*",
     "minecraft": "~1.19",
     "java": ">=17"
-  },
-  "suggests": {
-    "another-mod": "*"
   }
 }
