@@ -15,10 +15,7 @@ import java.net.Socket;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.DigestInputStream;
-import java.security.MessageDigest;
 import java.text.DateFormat;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.Scanner;
 import java.util.regex.Matcher;
@@ -51,23 +48,23 @@ public class LocalResourcePackHoster extends Thread {
     public static String hashCache = "";
 
     public static void sendPack(ServerPlayNetworkHandler handler, PacketSender sender, MinecraftServer server) {
-        if (EmbeddedAssetsConfig.localResourcePackHostingConfig.enabled) {
+        if (EAConfig.localResourcePackHostingConfig.enabled) {
             sendPack(handler.player);
         }
     }
     public static void sendPack(ServerPlayerEntity player) {
-        player.sendResourcePackUrl(url + hashCache + ".zip", hashCache, EmbeddedAssetsConfig.localResourcePackHostingConfig.requireClientToHavePack, EmbeddedAssetsConfig.getPromptMsg());
+        player.sendResourcePackUrl(url + hashCache + ".zip", hashCache, EAConfig.localResourcePackHostingConfig.requireClientToHavePack, EAConfig.getPromptMsg());
     }
     public static void reset(ServerPlayerEntity player) {
-        player.sendResourcePackUrl(empty_url, EMPTY_PACK_SHA1, EmbeddedAssetsConfig.localResourcePackHostingConfig.requireClientToHavePack, Text.literal("This removes the Server Resource Pack"));
+        player.sendResourcePackUrl(empty_url, EMPTY_PACK_SHA1, EAConfig.localResourcePackHostingConfig.requireClientToHavePack, Text.literal("This removes the Server Resource Pack"));
     }
 
     public static boolean startHttpd() {
-        if (!EmbeddedAssetsConfig.localResourcePackHostingConfig.enabled)
+        if (!EAConfig.localResourcePackHostingConfig.enabled)
             return false;
         try {
-            int port = EmbeddedAssetsConfig.localResourcePackHostingConfig.port;
-            if (EmbeddedAssetsConfig.localResourcePackHostingConfig.local)
+            int port = EAConfig.localResourcePackHostingConfig.port;
+            if (EAConfig.localResourcePackHostingConfig.local)
                 ip = "127.0.0.1";
             else
                 try (InputStream stream = new URL( "https://api.ipify.org" ).openStream();
@@ -128,7 +125,7 @@ public class LocalResourcePackHoster extends Thread {
 
 
     private static Pair<InputStream,Long> verbose( Object object ) {
-        if ( EmbeddedAssetsConfig.localResourcePackHostingConfig.verboseLogging)
+        if ( EAConfig.localResourcePackHostingConfig.verboseLogging)
             System.out.println( object.toString() );
         return null;
     }

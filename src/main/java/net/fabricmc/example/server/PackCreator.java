@@ -2,7 +2,6 @@ package net.fabricmc.example.server;
 
 import com.google.gson.*;
 import com.mojang.bridge.game.PackType;
-import com.mojang.datafixers.util.Pair;
 import net.fabricmc.example.mixin.AbstractFileResourcePackAccessor;
 import net.minecraft.SharedConstants;
 import net.minecraft.resource.AbstractFileResourcePack;
@@ -143,9 +142,9 @@ public class PackCreator {
     }
 
     public void addBasePack() throws IOException {
-        if (EmbeddedAssetsConfig.basePack.isEmpty())
+        if (EAConfig.basePack.isEmpty())
             return;
-        File file = new File(EmbeddedAssetsConfig.basePack);
+        File file = new File(EAConfig.basePack);
         if (!file.exists())
             return;
 

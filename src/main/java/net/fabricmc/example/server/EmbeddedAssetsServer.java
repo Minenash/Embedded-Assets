@@ -18,11 +18,11 @@ public class EmbeddedAssetsServer implements DedicatedServerModInitializer {
 
     @Override
     public void onInitializeServer() {
-        EmbeddedAssetsConfig.read();
+        EAConfig.read();
         LocalResourcePackHoster.startHttpd();
         ServerLifecycleEvents.SERVER_STARTED.register(id("load-resources"), EmbeddedAssetsServer::generateMasterPack);
         ServerLifecycleEvents.END_DATA_PACK_RELOAD.register(id("load-resources"), (server, resourceManager, success) -> {
-            if (EmbeddedAssetsConfig.regenerateOnReload)
+            if (EAConfig.regenerateOnReload)
                 generateMasterPack(server);
         });
         CommandRegistrationCallback.EVENT.register(id("commands"), EACommands::register);
@@ -44,18 +44,18 @@ public class EmbeddedAssetsServer implements DedicatedServerModInitializer {
         profiles.clear();
         List<AbstractFileResourcePack> packs = new ArrayList<>();
 
-        EmbeddedAssetsConfig.priority.removeIf(profile -> !manager.hasProfile(profile));
+        EAConfig.priority.removeIf(profile -> !manager.hasProfile(profile));
 
         for (ResourcePackProfile profile : manager.getProfiles())
-            if (!EmbeddedAssetsConfig.priority.contains(profile.getName()) && profile.createResourcePack() instanceof AbstractFileResourcePack)
-                EmbeddedAssetsConfig.priority.add(profile.getName());
+            if (!EAConfig.priority.contains(profile.getName()) && profile.createResourcePack() instanceof AbstractFileResourcePack)
+                EAConfig.priority.add(profile.getName());
 
-        EmbeddedAssetsConfig.save();
+        EAConfig.save();
 
         Collection<ResourcePackProfile> enabled = manager.getEnabledProfiles();
-        for (String profileName : EmbeddedAssetsConfig.priority) {
+        for (String profileName : EAConfig.priority) {
             ResourcePackProfile profile = manager.getProfile(profileName);
-            if (enabled.contains(profile) && !EmbeddedAssetsConfig.disabledResourcePacks.contains(profileName)) {
+            if (enabled.contains(profile) && !EAConfig.disabledResourcePacks.contains(profileName)) {
                 ResourcePack pack = profile.createResourcePack();
                 if (pack instanceof AbstractFileResourcePack frp) {
                     packs.add(frp);

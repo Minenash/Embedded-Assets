@@ -26,15 +26,15 @@ import static com.mojang.brigadier.arguments.BoolArgumentType.bool;
 import static com.mojang.brigadier.arguments.IntegerArgumentType.integer;
 import static com.mojang.brigadier.arguments.StringArgumentType.greedyString;
 import static com.mojang.brigadier.arguments.StringArgumentType.string;
-import static net.fabricmc.example.server.EmbeddedAssetsConfig.localResourcePackHostingConfig;
+import static net.fabricmc.example.server.EAConfig.localResourcePackHostingConfig;
 import static net.minecraft.server.command.CommandManager.argument;
 import static net.minecraft.server.command.CommandManager.literal;
 
 public class EACommands {
 
     private static final Predicate<ServerCommandSource> OP = source -> source.hasPermissionLevel(2);
-    private static final Predicate<String> RP_ENABLED = pack -> !EmbeddedAssetsConfig.disabledResourcePacks.contains(pack);
-    private static final Predicate<String> RP_DISABLED = pack -> EmbeddedAssetsConfig.disabledResourcePacks.contains(pack);
+    private static final Predicate<String> RP_ENABLED = pack -> !EAConfig.disabledResourcePacks.contains(pack);
+    private static final Predicate<String> RP_DISABLED = pack -> EAConfig.disabledResourcePacks.contains(pack);
     private static final Predicate<String> RP_ALL = pack -> true;
     private static RequiredArgumentBuilder<ServerCommandSource, String> datpackArg(Predicate<String> filter) {
         return argument("datapack", string()).suggests( (context,builder) -> getDatapackSuggestions(context, builder, filter) );
@@ -98,16 +98,16 @@ public class EACommands {
     }
 
     private static int regenOnReload(CommandContext<ServerCommandSource> context) {
-        EmbeddedAssetsConfig.regenerateOnReload = BoolArgumentType.getBool(context, "regenerate_pack_on_reload");
-        EmbeddedAssetsConfig.save();
+        EAConfig.regenerateOnReload = BoolArgumentType.getBool(context, "regenerate_pack_on_reload");
+        EAConfig.save();
 
-        if (EmbeddedAssetsConfig.regenerateOnReload)
+        if (EAConfig.regenerateOnReload)
             return sendMessage(context, "Resources will now regenerate on §e/reload", false);
         return sendMessage(context, "Resources will no longer regenerate on §e/reload", false);
     }
 
     private static int showRegenOnReload(CommandContext<ServerCommandSource> context) {
-        return sendMessage(context, "Regenerate Resources on Reload: §e" + EmbeddedAssetsConfig.regenerateOnReload, false);
+        return sendMessage(context, "Regenerate Resources on Reload: §e" + EAConfig.regenerateOnReload, false);
     }
 
     private static int getInfo(CommandContext<ServerCommandSource> context) {
@@ -129,12 +129,12 @@ public class EACommands {
 
         StringBuilder builder = new StringBuilder("\n§8§u[§aPack Priorities and Enablement§8]§r\n");
 
-        boolean doubleDigits = EmbeddedAssetsConfig.priority.size() >= 10;
-        for (int i = 0; i < EmbeddedAssetsConfig.priority.size(); i++) {
+        boolean doubleDigits = EAConfig.priority.size() >= 10;
+        for (int i = 0; i < EAConfig.priority.size(); i++) {
             builder.append("\n§e");
             if (doubleDigits && i+1 >= 10)
                 builder.append(" ");
-            String name = EmbeddedAssetsConfig.priority.get(i);
+            String name = EAConfig.priority.get(i);
             builder.append(i+1).append("§7: ").append(getDatapackColor(context, name)).append(name);
         }
 
@@ -145,7 +145,7 @@ public class EACommands {
 
     private static String getDatapackColor(CommandContext<ServerCommandSource> context, String pack) {
         if (context.getSource().getServer().getDataPackManager().getEnabledNames().contains(pack))
-            return EmbeddedAssetsConfig.disabledResourcePacks.contains(pack) ? "§c" : "§a";
+            return EAConfig.disabledResourcePacks.contains(pack) ? "§c" : "§a";
         return "§7§o";
     }
 
@@ -155,8 +155,8 @@ public class EACommands {
         if (profile == null)
             return sendMessage(context, "Datapack not found: §e" + datapack, true);
 
-        if (EmbeddedAssetsConfig.disabledResourcePacks.remove(profile.getName())) {
-            EmbeddedAssetsConfig.save();
+        if (EAConfig.disabledResourcePacks.remove(profile.getName())) {
+            EAConfig.save();
             return sendMessage(context, "Resource Pack for " + profile.getName() + " has been enabled.\n- Run §e/embedded_assets regenerate§7 for this to take effect", false);
         }
         return sendMessage(context, "Resource Pack for " + profile.getName() + " was already enabled", true);
@@ -168,8 +168,8 @@ public class EACommands {
         if (profile == null)
             return sendMessage(context, "Datapack not found: §e" + datapack, true);
 
-        if (EmbeddedAssetsConfig.disabledResourcePacks.add(profile.getName())) {
-            EmbeddedAssetsConfig.save();
+        if (EAConfig.disabledResourcePacks.add(profile.getName())) {
+            EAConfig.save();
             return sendMessage(context, "Resource Pack for " + profile.getName() + " has been disabled.\n- Run §e/embedded_assets regenerate§7 for this to take effect", false);
         }
         return sendMessage(context, "Resource Pack for " + profile.getName() + " was already disabled", true);
@@ -182,12 +182,12 @@ public class EACommands {
             return sendMessage(context, "Datapack not found: §e" + datapack, true);
 
         int priority = IntegerArgumentType.getInteger(context, "priority") - 1;
-        if (priority > EmbeddedAssetsConfig.priority.size())
-            priority = EmbeddedAssetsConfig.priority.size();
+        if (priority > EAConfig.priority.size())
+            priority = EAConfig.priority.size();
 
-        EmbeddedAssetsConfig.priority.remove(profile.getName());
-        EmbeddedAssetsConfig.priority.add(priority, profile.getName());
-        EmbeddedAssetsConfig.save();
+        EAConfig.priority.remove(profile.getName());
+        EAConfig.priority.add(priority, profile.getName());
+        EAConfig.save();
 
         return sendMessage(context, "§e" + datapack + "§7 priority set to §e" + (priority + 1) + "§7.\n- Run §e/embedded_assets regenerate§7 for this to take effect", false);
     }
@@ -200,7 +200,7 @@ public class EACommands {
                 + "\n§7Port: §e" + localResourcePackHostingConfig.port
                 + "\n§7Verbose Logging: §e" + localResourcePackHostingConfig.verboseLogging
                 + "\n§7Require Pack: §e" + localResourcePackHostingConfig.requireClientToHavePack
-                + "\n§7Prompt Msg: §e").append(EmbeddedAssetsConfig.getPromptMsg()).append(
+                + "\n§7Prompt Msg: §e").append(EAConfig.getPromptMsg()).append(
                   "\n\n§7Enable: §e/embedded_assets pack_hosting enable"
                 + "\n§7Disable: §e/embedded_assets pack_hosting disable"
                 + "\n§7Configure: §e/embedded_assets pack_hosting configure <port> <local> <verbose_logging> <require_pack> <pack_msg>"
@@ -214,7 +214,7 @@ public class EACommands {
                 LocalResourcePackHoster.stopHttpd();
             else {
                 localResourcePackHostingConfig.enabled = true;
-                EmbeddedAssetsConfig.save();
+                EAConfig.save();
             }
 
             if (LocalResourcePackHoster.startHttpd())
@@ -238,7 +238,7 @@ public class EACommands {
             return sendMessage(context, "The Local Pack Server wasn't running", true);
         else {
             localResourcePackHostingConfig.enabled = false;
-            EmbeddedAssetsConfig.save();
+            EAConfig.save();
 
             for (ServerPlayerEntity player : context.getSource().getServer().getPlayerManager().getPlayerList())
                 LocalResourcePackHoster.reset(player);
@@ -261,12 +261,12 @@ public class EACommands {
         localResourcePackHostingConfig.verboseLogging = BoolArgumentType.getBool(context, "verbose_logging");
         localResourcePackHostingConfig.requireClientToHavePack = BoolArgumentType.getBool(context, "require_pack");
         localResourcePackHostingConfig.promptMsg = StringArgumentType.getString(context, "prompt_msg");
-        EmbeddedAssetsConfig.save();
+        EAConfig.save();
         return sendMessage(context, "The Local Pack Server has been configured.\n- Run §e/embedded_assets pack_hosting enable§7 to (re)start the server", false);
     }
 
     private static int reload(CommandContext<ServerCommandSource> context) {
-        if (EmbeddedAssetsConfig.read())
+        if (EAConfig.read())
             return sendMessage(context, "Config Reloaded", false);
         return sendMessage(context, "Failed to Reload Config", true);
     }

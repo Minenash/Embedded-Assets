@@ -16,9 +16,9 @@ import java.util.List;
 import java.util.Set;
 
 @SuppressWarnings("InstantiationOfUtilityClass")
-public class EmbeddedAssetsConfig {
+public class EAConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().excludeFieldsWithModifiers(Modifier.PRIVATE).create();
-    private static final Path PATH = FabricLoader.getInstance().getConfigDir().resolve("EmbeddedAssetsLoader.json");
+    private static final Path PATH = FabricLoader.getInstance().getConfigDir().resolve("Embedded_Assets.json");
 
     public static boolean regenerateOnReload = false;
     public static String basePack = "";
@@ -37,10 +37,10 @@ public class EmbeddedAssetsConfig {
 
     public static Text getPromptMsg() {
         try {
-            return Text.Serializer.fromJson(EmbeddedAssetsConfig.localResourcePackHostingConfig.promptMsg);
+            return Text.Serializer.fromJson(EAConfig.localResourcePackHostingConfig.promptMsg);
         }
         catch (Exception e) {
-            return Text.literal(EmbeddedAssetsConfig.localResourcePackHostingConfig.promptMsg);
+            return Text.literal(EAConfig.localResourcePackHostingConfig.promptMsg);
         }
     }
 
@@ -51,7 +51,7 @@ public class EmbeddedAssetsConfig {
         }
 
         try (BufferedReader reader = Files.newBufferedReader(PATH)) {
-            GSON.fromJson(reader, EmbeddedAssetsConfig.class);
+            GSON.fromJson(reader, EAConfig.class);
             return true;
         } catch (IOException e) {
             System.out.println("Failed to read config, priorities unavailable until config is fixed:");
@@ -62,7 +62,7 @@ public class EmbeddedAssetsConfig {
 
     public static void save() {
         try {
-            Files.write(PATH, GSON.toJson(EmbeddedAssetsConfig.class.newInstance()).getBytes());
+            Files.write(PATH, GSON.toJson(EAConfig.class.newInstance()).getBytes());
         } catch (Exception e) {
             System.out.println("Failed to save config:");
             e.printStackTrace();
