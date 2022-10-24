@@ -20,3 +20,13 @@ the datapack, and to configure the pack hosting server.
 If enabled, this mod will also host the resource pack for you, so you don't have to manually upload the file somewhere
 everytime you add a new datapack. Run `/embedded_assets pack_hosting` for the status of the server and th commands to
 control and configure it.
+
+## What datapacks are supported?
+
+### Mixed-packs
+Packs that have both a `data` folder and an `assets` folder. These packs contain both sides so that the same zip
+can be placed in the datapacks folder and the resource packs folder. With this mod ofc, you only need to put it in the
+datapack folder.
+
+### Resource Pack Zips at Datapack root
+Any resource pack zip located at the root of the datapack will be loaded
