@@ -9,8 +9,9 @@
     "Minenash"
   ],
   "contact": {
-    "homepage": "https://fabricmc.net/",
-    "sources": "https://github.com/FabricMC/fabric-example-mod"
+    "homepage": "https://modrinth.com/mod/embedded_assets",
+    "sources": "https://github.com/Minenash/Embedded-Assets",
+    "issues": "https://github.com/Minenash/Embedded-Assets/issues"
   },
 
   "license": "LGPL-3",
