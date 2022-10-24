@@ -1,6 +1,8 @@
 # Embedded Assets
 
-![fabric-api](https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@2/assets/cozy/requires/fabric-api_64h.png) ![discord-singular](https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@2/assets/cozy/social/discord-singular_64h.png) ![kofi-singular-alt](https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@2/assets/cozy/donate/kofi-singular-alt_64h.png) \
+[![fabric-api](https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@2/assets/cozy/requires/fabric-api_64h.png)](https://modrinth.com/mod/fabric-api) 
+[![discord](https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@2/assets/cozy/social/discord-singular_64h.png)](https://discord.com/invite/eYf7DDHhvN) 
+[![kofi](https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@2/assets/cozy/donate/kofi-singular-alt_64h.png)](https://ko-fi.com/minenash) \
 A fabric mod that automatically loads Resource Packs embedded within Datapacks on load. For servers, it'll merge the packs and send it to the client.
 
 ## Can you be more specific?
