@@ -1,8 +1,10 @@
 package net.fabricmc.example.server;
 
 import com.google.gson.*;
+import com.mojang.bridge.game.PackType;
 import com.mojang.datafixers.util.Pair;
 import net.fabricmc.example.mixin.AbstractFileResourcePackAccessor;
+import net.minecraft.SharedConstants;
 import net.minecraft.resource.AbstractFileResourcePack;
 import net.minecraft.resource.ZipResourcePack;
 import net.minecraft.resource.metadata.ResourceFilter;
@@ -13,9 +15,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
+import java.time.Instant;
 import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 public class PackCreator {
 
@@ -23,11 +27,10 @@ public class PackCreator {
     public Map<String,FileTime> lastModified = new HashMap<>();
     public Map<String,JsonObject> mergables = new HashMap<>();
     public List<ResourceFilter> filters = new ArrayList<>();
+    public List<JsonObject> filterObjects = new ArrayList<>();
     public ResourceFilter tempFilter = null;
 
-    public Pair<Map<String,byte[]>,Map<String,FileTime>> create(List<AbstractFileResourcePack> packs) throws IOException {
-        workingData.put("pack.mcmeta", EmbeddedAssetsServer.metadata);
-        lastModified.put("pack.mcmeta", FileTime.fromMillis(0));
+    public void create(List<AbstractFileResourcePack> packs) throws IOException {
         for (AbstractFileResourcePack datapack : packs) {
             Path path = ((AbstractFileResourcePackAccessor)datapack).getBase().toPath();
             if (datapack instanceof ZipResourcePack)
@@ -37,7 +40,6 @@ public class PackCreator {
                 if (Files.exists(assets)) {
                     readDirFromDir(assets);
                     Path meta = path.resolve("pack.mcmeta");
-                    System.out.println(meta + ": " + Files.exists(meta));
                     if (Files.exists(meta)) {
                         processMetaForFilter(Files.readAllBytes(meta));
                         maybeAddFilter();
@@ -56,8 +58,20 @@ public class PackCreator {
             lastModified.putIfAbsent(entry.getKey(), FileTime.fromMillis(0));
         }
 
+        workingData.put("pack.mcmeta", createMetadata());
+        lastModified.put("pack.mcmeta", FileTime.fromMillis(0));
 
-        return Pair.of(workingData, lastModified);
+        try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream("resources.zip"))) {
+            for (var entry : workingData.entrySet()) {
+                ZipEntry e = new ZipEntry(entry.getKey());
+                e.setLastModifiedTime(lastModified.getOrDefault(entry.getKey(), FileTime.from(Instant.now())));
+                zos.putNextEntry(e);
+                zos.write(entry.getValue());
+                zos.closeEntry();
+            }
+            zos.flush();
+        }
+        LocalResourcePackHoster.hashCache = LocalResourcePackHoster.calcSHA1();
     }
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -66,7 +80,6 @@ public class PackCreator {
 
         for (ZipEntry entry; (entry = stream.getNextEntry()) != null;) {
             String name = entry.getName();
-            System.out.println(name);
             if ((name.startsWith("assets/") && !workingData.containsKey(name) && notBlocked(name)) ) {
                 Mergable mergable = mergeType(name);
                 if (mergable != null)
@@ -145,11 +158,12 @@ public class PackCreator {
     public void processMetaForFilter(byte[] meta) {
         try {
             JsonObject json = GSON.fromJson(new String(meta), JsonObject.class);
-            System.out.println(json.toString());
             if (json.has("filter")) {
-                System.out.println("FILTER READ");
-                tempFilter = ResourceFilter.READER.fromJson(json.get("filter").getAsJsonObject());
-                System.out.println("FILTER READ");
+                JsonObject filter = json.get("filter").getAsJsonObject();
+                tempFilter = ResourceFilter.READER.fromJson(filter);
+                if (filter.has("block"))
+                    for (JsonElement block : filter.get("block").getAsJsonArray())
+                        filterObjects.add(block.getAsJsonObject());
             }
         }
         catch (Exception ignored) {}
@@ -158,7 +172,6 @@ public class PackCreator {
         if (tempFilter != null) {
             filters.add(tempFilter);
             tempFilter = null;
-            System.out.println("FILTER ADDED");
         }
     }
     public boolean notBlocked(String name) {
@@ -166,6 +179,8 @@ public class PackCreator {
             return true;
 
         int index = name.indexOf('/', 7);
+        if (index == -1)
+            return true;
         String namespace = name.substring(7,index);
         String path = name.substring(index+1);
 
@@ -199,8 +214,6 @@ public class PackCreator {
         catch (JsonSyntaxException e) {
             System.out.println("Malformed json: " + name);
         }
-
-
     }
 
     public static JsonObject mergeJsonObjects(Mergable type, JsonObject inMap, JsonObject fromEntry) {
@@ -208,11 +221,9 @@ public class PackCreator {
            return fromEntry;
 
         else if (type == Mergable.MERGE_ROOT) {
-            for (Map.Entry<String,JsonElement> a : fromEntry.entrySet()) {
-                System.out.println(a.getKey() + ": " + a.getValue());
+            for (Map.Entry<String,JsonElement> a : fromEntry.entrySet())
                 if (!inMap.has(a.getKey()))
                     inMap.add(a.getKey(), a.getValue());
-            }
         }
 
         else if (type == Mergable.MERGE_PROVIDERS) {
@@ -227,6 +238,26 @@ public class PackCreator {
             inMap.add("providers", into);
         }
         return inMap;
+    }
+
+    public byte[] createMetadata() {
+        JsonObject root = new JsonObject();
+
+        JsonObject pack = new JsonObject();
+        pack.addProperty("pack_format", SharedConstants.getGameVersion().getPackVersion(PackType.RESOURCE) );
+        pack.addProperty("description", "(datapacks) Do §e/embedded_assets§7 for detailed info");
+        root.add("pack", pack);
+
+        if (!filterObjects.isEmpty()) {
+            JsonObject filter = new JsonObject();
+            JsonArray block = new JsonArray();
+            for (JsonObject o : filterObjects)
+                block.add(o);
+            filter.add("block", block);
+            root.add("filter", filter);
+        }
+        return GSON.toJson(root).getBytes(StandardCharsets.UTF_8);
+
     }
 
 }
