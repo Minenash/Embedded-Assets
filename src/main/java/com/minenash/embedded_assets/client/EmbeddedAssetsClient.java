@@ -1,5 +1,6 @@
 package com.minenash.embedded_assets.client;
 
+import com.google.common.collect.ImmutableList;
 import net.fabricmc.api.ClientModInitializer;
 import com.minenash.embedded_assets.mixin.AbstractFileResourcePackAccessor;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -24,16 +25,16 @@ import java.util.zip.ZipInputStream;
 
 public class EmbeddedAssetsClient implements ClientModInitializer {
 	public static final MinecraftClient client = MinecraftClient.getInstance();
-	public static final Logger LOGGER = LoggerFactory.getLogger("content-packs");
+	public static final Logger LOGGER = LoggerFactory.getLogger("embedded_assets");
 
 	public static List<ResourcePackProfile> packs = new ArrayList<>();
 
 	@Override
 	public void onInitializeClient() {
-		ServerLifecycleEvents.SERVER_STARTED.register(new Identifier("content-packs_load-resources"), EmbeddedAssetsClient::getResourcePacks);
-		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register(new Identifier("content-packs_load-resources"), (server, resourceManager, success) -> getResourcePacks(server));
+		ServerLifecycleEvents.SERVER_STARTED.register(new Identifier("embedded_assets_load-resources"), EmbeddedAssetsClient::getResourcePacks);
+		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register(new Identifier("embedded_assets_load-resources"), (server, resourceManager, success) -> getResourcePacks(server));
 
-		ServerLifecycleEvents.SERVER_STOPPING.register(new Identifier("content-packs_remove-resources"), server -> {
+		ServerLifecycleEvents.SERVER_STOPPING.register(new Identifier("embedded_assets_remove-resources"), server -> {
 			if (packs.isEmpty())
 				return;
 			packs.clear();
@@ -43,19 +44,32 @@ public class EmbeddedAssetsClient implements ClientModInitializer {
 	}
 
 	private static void getResourcePacks(MinecraftServer server) {
+		List<ResourcePackProfile> before = new ArrayList<>(packs);
 		packs.clear();
 		for (ResourcePackProfile profile : server.getDataPackManager().getEnabledProfiles())
 			if (profile.createResourcePack() instanceof AbstractFileResourcePack datapack)
 				try { getResourcePack(datapack, profile); }
 				catch (Throwable e) { e.printStackTrace(); }
-		if (!packs.isEmpty()) {
-			client.getResourcePackManager().scanPacks();
-			List<String> c = new ArrayList<>(client.getResourcePackManager().getEnabledNames());
-			for (ResourcePackProfile pack : packs)
-				c.add(pack.getName());
-			client.getResourcePackManager().setEnabledProfiles(c);
-			client.reloadResources();
+
+		client.getResourcePackManager().scanPacks();
+		List<String> c = new ArrayList<>(client.getResourcePackManager().getEnabledNames());
+		for (ResourcePackProfile pack : packs)
+			if (!before.contains(pack) && !c.contains(pack.getName()))
+					c.add(pack.getName());
+		client.getResourcePackManager().setEnabledProfiles(c);
+
+		ImmutableList<String> list = ImmutableList.copyOf(client.options.resourcePacks);
+		client.options.resourcePacks.clear();
+		client.options.incompatibleResourcePacks.clear();
+		for (ResourcePackProfile resourcePackProfile : client.getResourcePackManager().getEnabledProfiles()) {
+			if (resourcePackProfile.isPinned()) continue;
+			client.options.resourcePacks.add(resourcePackProfile.getName());
+			if (resourcePackProfile.getCompatibility().isCompatible()) continue;
+			client.options.incompatibleResourcePacks.add(resourcePackProfile.getName());
 		}
+		ImmutableList<String> list2 = ImmutableList.copyOf(client.options.resourcePacks);
+		if (!list2.equals(list))
+			client.reloadResources();
 
 	}
 
