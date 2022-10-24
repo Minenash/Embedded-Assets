@@ -37,14 +37,15 @@ public class PackCreator {
                 if (Files.exists(assets)) {
                     readDirFromDir(assets);
                     Path meta = path.resolve("pack.mcmeta");
+                    System.out.println(meta + ": " + Files.exists(meta));
                     if (Files.exists(meta)) {
                         processMetaForFilter(Files.readAllBytes(meta));
                         maybeAddFilter();
                     }
                 }
                 for (Path possiblePack : Files.list(path).toList())
-                    if (Files.isRegularFile(possiblePack) && possiblePack.endsWith(".zip"))
-                        readZip( Files.newInputStream(possiblePack) );
+                    if (Files.isRegularFile(possiblePack) && possiblePack.toString().endsWith(".zip"))
+                        readZip(Files.newInputStream(possiblePack));
             }
 
         }
@@ -65,6 +66,7 @@ public class PackCreator {
 
         for (ZipEntry entry; (entry = stream.getNextEntry()) != null;) {
             String name = entry.getName();
+            System.out.println(name);
             if ((name.startsWith("assets/") && !workingData.containsKey(name) && notBlocked(name)) ) {
                 Mergable mergable = mergeType(name);
                 if (mergable != null)
@@ -141,18 +143,28 @@ public class PackCreator {
     }
 
     public void processMetaForFilter(byte[] meta) {
-        try { tempFilter = ResourceFilter.READER.fromJson( GSON.fromJson(new String(meta), JsonObject.class) ); }
+        try {
+            JsonObject json = GSON.fromJson(new String(meta), JsonObject.class);
+            System.out.println(json.toString());
+            if (json.has("filter")) {
+                System.out.println("FILTER READ");
+                tempFilter = ResourceFilter.READER.fromJson(json.get("filter").getAsJsonObject());
+                System.out.println("FILTER READ");
+            }
+        }
         catch (Exception ignored) {}
     }
     public void maybeAddFilter() {
         if (tempFilter != null) {
             filters.add(tempFilter);
             tempFilter = null;
+            System.out.println("FILTER ADDED");
         }
     }
     public boolean notBlocked(String name) {
         if (filters.isEmpty())
             return true;
+
         int index = name.indexOf('/', 7);
         String namespace = name.substring(7,index);
         String path = name.substring(index+1);
