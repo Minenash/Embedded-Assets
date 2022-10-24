@@ -203,7 +203,7 @@ public class EACommands {
                 + "\n§7Prompt Msg: §e").append(EAConfig.getPromptMsg()).append(
                   "\n\n§7Enable: §e/embedded_assets pack_hosting enable"
                 + "\n§7Disable: §e/embedded_assets pack_hosting disable"
-                + "\n§7Configure: §e/embedded_assets pack_hosting configure <port> <local> <verbose_logging> <require_pack> <pack_msg>"
+                + "\n§7Configure: §e/embedded_assets pack_hosting config set <port> <local> <verbose_logging> <require_pack> <pack_msg>"
         ), false);
         return 1;
     }
