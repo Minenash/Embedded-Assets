@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "package": "com.minenash.embedded_assets.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "client": [
+    "client.ClientBuiltinResourcePackProviderMixin"
+  ],
+  "mixins": [
+    "AbstractFileResourcePackAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

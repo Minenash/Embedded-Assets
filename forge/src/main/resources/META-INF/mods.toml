@@ -1,0 +1,35 @@
+modLoader = "javafml"
+loaderVersion = "[43,)"
+issueTrackerURL = "https://github.com/Minenash/Embedded-Assets/issues"
+license = "LGPL-3"
+
+[[mods]]
+modId = "embedded_assets"
+version = "${version}"
+displayName = "Embedded Assets"
+authors = "Minenash"
+description = '''
+Automatically loads Resource Packs embedded within Datapacks on load. For servers, it'll merge the packs and send it to the client
+'''
+logoFile = "icon.png"
+
+[[dependencies.embedded_assets]]
+modId = "forge"
+mandatory = true
+versionRange = "[43,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.embedded_assets]]
+modId = "minecraft"
+mandatory = true
+versionRange = "[1.19.2,)"
+ordering = "NONE"
+side = "BOTH"
+
+#[[dependencies.embedded_assets]]
+#modId = "architectury"
+#mandatory = true
+#versionRange = "[6.2.43,)"
+#ordering = "AFTER"
+#side = "BOTH"
