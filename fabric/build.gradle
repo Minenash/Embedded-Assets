@@ -23,6 +23,8 @@ dependencies {
 
     common(project(path: ":common", configuration: "namedElements")) { transitive false }
     shadowCommon(project(path: ":common", configuration: "transformProductionFabric")) { transitive false }
+
+    include("commons-codec:commons-codec:1.15")
 }
 
 processResources {
