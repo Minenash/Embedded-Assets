@@ -13,8 +13,10 @@ import java.net.Socket;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
 import java.text.DateFormat;
 import java.util.Date;
+import java.util.HexFormat;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -97,7 +99,11 @@ public class LocalResourcePackHoster extends Thread {
     }
 
     public static String calcSHA1() {
-        try { return DigestUtils.sha1Hex( Files.readAllBytes(Path.of("resources.zip")) ); }
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-1");
+            digest.update(Files.readAllBytes(Path.of("resources.zip")));
+            return HexFormat.of().formatHex(digest.digest());
+        }
         catch (Exception e) { e.printStackTrace(); }
         return "";
     }
