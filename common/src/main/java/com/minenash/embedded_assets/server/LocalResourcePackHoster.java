@@ -1,11 +1,9 @@
 package com.minenash.embedded_assets.server;
 
 import com.google.common.hash.Hashing;
-import com.ibm.icu.impl.Pair;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
-import org.apache.commons.codec.digest.DigestUtils;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -39,6 +37,7 @@ public class LocalResourcePackHoster extends Thread {
             0, 0, 2, 0, 2, 0, 110, 0, 0, 0, -42, 0, 0, 0, 0, 0};
 
     private static final String EMPTY_PACK_SHA1 = Hashing.sha1().hashBytes(EMPTY_PACK).toString();
+    private static record StreamWithSize(InputStream stream, long size){}
 
     public static volatile boolean running = false;
     public static String url = "";
@@ -128,13 +127,13 @@ public class LocalResourcePackHoster extends Thread {
     }
 
 
-    private static Pair<InputStream,Long> verbose( Object object ) {
+    private static StreamWithSize verbose( Object object ) {
         if ( EAConfig.localResourcePackHostingConfig.verboseLogging)
             System.out.println( object.toString() );
         return null;
     }
 
-    public Pair<InputStream,Long> requestFileCallback(MineConnection connection, String request, int step) {
+    public StreamWithSize requestFileCallback(MineConnection connection, String request, int step) {
         String clientAddrs = connection.client.getInetAddress().getHostAddress();
 
         String player = null;
@@ -152,7 +151,7 @@ public class LocalResourcePackHoster extends Thread {
 
         if (request.equals("empty.zip")) {
             verbose( "Serving '/empty.zip' to " + player + "(" + clientAddrs + ")" );
-            return Pair.of(new ByteArrayInputStream(EMPTY_PACK), (long) EMPTY_PACK.length);
+            return new StreamWithSize(new ByteArrayInputStream(EMPTY_PACK), EMPTY_PACK.length);
         }
 
         if (!request.equals(hashCache+".zip"))
@@ -163,7 +162,7 @@ public class LocalResourcePackHoster extends Thread {
 
         try {
             verbose( "Serving 'resources.zip' to " + player + "(" + clientAddrs + ")" );
-            return Pair.of(Files.newInputStream(path), Files.size(path));
+            return new StreamWithSize(Files.newInputStream(path), Files.size(path));
         }
         catch (IOException e) {
             verbose( "Error serving '" + request + "' to " + player + "(" + clientAddrs + "):" );
@@ -192,7 +191,7 @@ public class LocalResourcePackHoster extends Thread {
                 Matcher get = Pattern.compile("GET /?(\\S*).*").matcher(request);
                 if (get.matches()) {
                     request = get.group(1);
-                    Pair<InputStream,Long> result = requestFileCallback(this, request, 0);
+                    StreamWithSize result = requestFileCallback(this, request, 0);
                     if (result == null) {
                         pout.println("HTTP/1.0 400 Bad Request");
                         onRequestError(400);
@@ -200,15 +199,15 @@ public class LocalResourcePackHoster extends Thread {
                         try {
                             out.write("HTTP/1.0 200 OK\r\n".getBytes());
                             out.write("Content-Type: application/zip\r\n".getBytes());
-                            out.write(("Content-Length: " + result.second + "\r\n").getBytes());
+                            out.write(("Content-Length: " + result.size + "\r\n").getBytes());
                             out.write(("Date: " + DateFormat.getDateInstance().format(new Date()) + "\r\n").getBytes());
                             out.write("Server: MineHttpd\r\n\r\n".getBytes());
                             byte[] data = new byte[64 * 1024];
-                            for (int read; (read = result.first.read(data)) > -1; ) {
+                            for (int read; (read = result.stream.read(data)) > -1; ) {
                                 out.write(data, 0, read);
                             }
                             out.flush();
-                            result.first.close();
+                            result.stream.close();
                             verbose( "Successfully served '" + request + "' to " + client.getInetAddress() );
                         } catch (FileNotFoundException e) {
                             pout.println("HTTP/1.0 404 Object Not Found");
