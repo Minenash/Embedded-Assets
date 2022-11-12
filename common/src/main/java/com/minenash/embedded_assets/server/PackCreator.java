@@ -66,7 +66,7 @@ public class PackCreator {
 
         try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream("resources.zip"))) {
             for (var entry : workingData.entrySet()) {
-                ZipEntry e = new ZipEntry(entry.getKey());
+                ZipEntry e = new ZipEntry(entry.getKey().replace("\\", "/"));
                 e.setLastModifiedTime(lastModified.getOrDefault(entry.getKey(), FileTime.from(Instant.now())));
                 zos.putNextEntry(e);
                 zos.write(entry.getValue());
