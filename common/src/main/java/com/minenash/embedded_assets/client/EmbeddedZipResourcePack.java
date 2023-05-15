@@ -5,6 +5,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resource.AbstractFileResourcePack;
+import net.minecraft.resource.InputSupplier;
 import net.minecraft.resource.ResourcePack;
 import net.minecraft.resource.ResourceType;
 import net.minecraft.resource.metadata.ResourceMetadataReader;
@@ -13,9 +14,9 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
-import java.util.function.Predicate;
 
 public class EmbeddedZipResourcePack implements ResourcePack {
 
@@ -32,21 +33,31 @@ public class EmbeddedZipResourcePack implements ResourcePack {
 
     @Nullable
     @Override
-    public InputStream openRoot(String fileName) {
+    public InputSupplier<InputStream> openRoot(String... segments) {
+        String fileName = String.join((CharSequence) "/", segments);
         if (fileName.contains("/") || fileName.contains("\\")) {
             throw new IllegalArgumentException("Root resources can only be filenames, not paths (no / allowed!)");
         }
-        return new ByteArrayInputStream(data.get(fileName));
+        return new InputSupplier<InputStream>() {
+            @Override
+            public InputStream get() throws IOException {
+                return new ByteArrayInputStream(data.get(fileName));
+            }
+        };
     }
 
     @Override
-    public InputStream open(ResourceType type, Identifier id) {
-        return new ByteArrayInputStream(data.get(getFilename(type, id)));
+    public InputSupplier<InputStream> open(ResourceType type, Identifier id) {
+        return new InputSupplier<InputStream>() {
+            @Override
+            public InputStream get() throws IOException {
+                return new ByteArrayInputStream(data.get(getFilename(type, id)));
+            }
+        };
     }
 
     @Override
-    public Collection<Identifier> findResources(ResourceType type, String namespace, String prefix, Predicate<Identifier> allowedPathPredicate) {
-        ArrayList<Identifier> list = Lists.newArrayList();
+    public void findResources(ResourceType type, String namespace, String prefix, ResultConsumer consumer) {
         String string = type.getDirectory() + "/" + namespace + "/";
         String string2 = string + prefix + "/";
         for (String name : data.keySet()) {
@@ -57,16 +68,10 @@ public class EmbeddedZipResourcePack implements ResourcePack {
                 LOGGER.warn("Invalid path in datapack: {}:{}, ignoring", namespace, string4);
                 continue;
             }
-            if (allowedPathPredicate.test(identifier))
-                list.add(identifier);
+
+            consumer.accept(identifier, open(type, identifier));
         }
 
-        return list;
-    }
-
-    @Override
-    public boolean contains(ResourceType type, Identifier id) {
-        return data.get(getFilename(type, id)) != null;
     }
 
     private static String getFilename(ResourceType type, Identifier id) {

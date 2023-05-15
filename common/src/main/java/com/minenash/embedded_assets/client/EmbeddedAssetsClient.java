@@ -1,7 +1,8 @@
 package com.minenash.embedded_assets.client;
 
 import com.google.common.collect.ImmutableList;
-import com.minenash.embedded_assets.mixin.AbstractFileResourcePackAccessor;
+import com.minenash.embedded_assets.AbstractFileResourcePackAccessor;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.resource.*;
 import net.minecraft.resource.metadata.PackResourceMetadata;
@@ -74,7 +75,7 @@ public class EmbeddedAssetsClient {
 			return;
 
 		if (datapack instanceof ZipResourcePack) {
-			if (((ZipResourcePack) datapack).containsFile("assets"))
+			if (((ZipResourcePack) datapack).openRoot("assets") != null)
 				addPackToList(datapack, datapack.getName(), profile.getDescription(), profile.getCompatibility());
 
 			ZipFile zip = new ZipFile(file);
@@ -82,7 +83,7 @@ public class EmbeddedAssetsClient {
 			while (entries.hasMoreElements() ) {
 				String name = entries.nextElement().getName();
 				if (name.endsWith(".zip") && !name.contains("/"))
-					createAndAdd("embedded/" + datapack.getName(), datapack.openRoot(name));
+					createAndAdd("embedded/" + datapack.getName(), datapack.openRoot(name).get());
 			}
 				zip.close();
 		}
@@ -97,9 +98,8 @@ public class EmbeddedAssetsClient {
 	}
 
 	public static void addPackToList(ResourcePack pack, String name, Text description, ResourcePackCompatibility compat) {
-		packs.add(new ResourcePackProfile(pack.getName(), false, () -> pack, Text.literal(name),
-				description, compat, ResourcePackProfile.InsertionPosition.TOP, false,
-				desc -> Text.literal("(datapack) ").append(desc)));
+		packs.add(ResourcePackProfile.create(pack.getName(), Text.literal(name), false, var1 -> pack,
+		        ResourceType.SERVER_DATA, ResourcePackProfile.InsertionPosition.TOP, ResourcePackSource.SERVER));
 	}
 
 	public static void createAndAdd(String sourceName, InputStream rpInputStream) throws IOException {
@@ -119,9 +119,9 @@ public class EmbeddedAssetsClient {
 			return;
 
 		EmbeddedZipResourcePack pack = new EmbeddedZipResourcePack(sourceName, data);
-		PackResourceMetadata meta = pack.parseMetadata(PackResourceMetadata.READER);
+		PackResourceMetadata meta = pack.parseMetadata(PackResourceMetadata.SERIALIZER);
 		addPackToList(pack, sourceName.substring(9), meta.getDescription(),
-				ResourcePackCompatibility.from(meta, ResourceType.CLIENT_RESOURCES));
+				ResourcePackCompatibility.from(meta.getPackFormat(), ResourceType.CLIENT_RESOURCES));
 	}
 
 }

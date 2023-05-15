@@ -6,7 +6,8 @@
     "client.ClientBuiltinResourcePackProviderMixin"
   ],
   "mixins": [
-    "AbstractFileResourcePackAccessor"
+    "DirectoryResourcePackMixin",
+    "ZipResourcePackMixin"
   ],
   "injectors": {
     "defaultRequire": 1

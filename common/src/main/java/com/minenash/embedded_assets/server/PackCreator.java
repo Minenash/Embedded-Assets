@@ -1,11 +1,12 @@
 package com.minenash.embedded_assets.server;
 
 import com.google.gson.*;
-import com.minenash.embedded_assets.mixin.AbstractFileResourcePackAccessor;
-import com.mojang.bridge.game.PackType;
+import com.minenash.embedded_assets.AbstractFileResourcePackAccessor;
+
 import net.minecraft.SharedConstants;
 import net.minecraft.resource.AbstractFileResourcePack;
 import net.minecraft.resource.DirectoryResourcePack;
+import net.minecraft.resource.ResourceType;
 import net.minecraft.resource.ZipResourcePack;
 import net.minecraft.resource.metadata.ResourceFilter;
 
@@ -163,7 +164,7 @@ public class PackCreator {
             JsonObject json = GSON.fromJson(new String(meta), JsonObject.class);
             if (json.has("filter")) {
                 JsonObject filter = json.get("filter").getAsJsonObject();
-                tempFilter = ResourceFilter.READER.fromJson(filter);
+                tempFilter = ResourceFilter.SERIALIZER.fromJson(filter);
                 if (filter.has("block"))
                     for (JsonElement block : filter.get("block").getAsJsonArray())
                         filterObjects.add(block.getAsJsonObject());
@@ -247,7 +248,7 @@ public class PackCreator {
         JsonObject root = new JsonObject();
 
         JsonObject pack = new JsonObject();
-        pack.addProperty("pack_format", SharedConstants.getGameVersion().getPackVersion(PackType.RESOURCE) );
+        pack.addProperty("pack_format", SharedConstants.getGameVersion().getResourceVersion(ResourceType.CLIENT_RESOURCES) );
         pack.addProperty("description", "(datapacks) Do §e/embedded_assets§7 for detailed info");
         root.add("pack", pack);
 
