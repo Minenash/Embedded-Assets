@@ -1,6 +1,7 @@
 package com.minenash.embedded_assets.mixin;
 
 import java.io.File;
+import java.nio.file.Path;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -16,7 +17,7 @@ public class ZipResourcePackMixin implements AbstractFileResourcePackAccessor {
     private File backingZipFile;
 
     @Override
-    public File getBase() {
-        return this.backingZipFile;
+    public Path getPath() {
+        return this.backingZipFile.toPath();
     }
 }

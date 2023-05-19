@@ -35,7 +35,7 @@ public class PackCreator {
 
     public void create(List<AbstractFileResourcePack> packs) throws IOException {
         for (AbstractFileResourcePack datapack : packs) {
-            Path path = ((AbstractFileResourcePackAccessor)datapack).getBase().toPath();
+            Path path = ((AbstractFileResourcePackAccessor)datapack).getPath();
             if (datapack instanceof ZipResourcePack)
                 readFromZip(Files.newInputStream(path));
             else if (datapack instanceof DirectoryResourcePack){

@@ -1,9 +1,9 @@
 package com.minenash.embedded_assets;
 
-import java.io.File;
+import java.nio.file.Path;
 
 public interface AbstractFileResourcePackAccessor {
 
-    File getBase();
+    Path getPath();
 
 }

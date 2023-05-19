@@ -1,6 +1,5 @@
 package com.minenash.embedded_assets.mixin;
 
-import java.io.File;
 import java.nio.file.Path;
 
 import org.spongepowered.asm.mixin.Mixin;
@@ -17,7 +16,7 @@ public class DirectoryResourcePackMixin implements AbstractFileResourcePackAcces
     private Path root;
 
     @Override
-    public File getBase() {
-        return root.toFile();
+    public Path getPath() {
+        return this.root;
     }
 }

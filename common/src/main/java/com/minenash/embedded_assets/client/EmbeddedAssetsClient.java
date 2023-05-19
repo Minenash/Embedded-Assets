@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -70,15 +71,15 @@ public class EmbeddedAssetsClient {
 	}
 
 	private static void getResourcePack(AbstractFileResourcePack datapack, ResourcePackProfile profile) throws IOException {
-		File file = ((AbstractFileResourcePackAccessor) datapack).getBase();
-		if (!file.exists())
+		Path path = ((AbstractFileResourcePackAccessor) datapack).getPath();
+		if (!Files.exists(path))
 			return;
 
 		if (datapack instanceof ZipResourcePack) {
 			if (((ZipResourcePack) datapack).openRoot("assets") != null)
 				addPackToList(datapack, datapack.getName(), profile.getDescription(), profile.getCompatibility());
 
-			ZipFile zip = new ZipFile(file);
+			ZipFile zip = new ZipFile(path.toFile());
 			var entries = zip.entries();
 			while (entries.hasMoreElements() ) {
 				String name = entries.nextElement().getName();
@@ -88,11 +89,11 @@ public class EmbeddedAssetsClient {
 				zip.close();
 		}
 		else {
-			if (Files.exists(file.toPath().resolve("assets")))
+			if (Files.exists(path.resolve("assets")))
 				addPackToList(datapack, datapack.getName(), profile.getDescription(), profile.getCompatibility());
-			for (File possiblePack : file.listFiles())
-				if (possiblePack.isFile() && possiblePack.getName().endsWith(".zip"))
-					createAndAdd("embedded/" + datapack.getName(), new FileInputStream(possiblePack));
+			for (Path possiblePack : Files.list(path).toList())
+				if (Files.isRegularFile(possiblePack) && possiblePack.endsWith(".zip"))
+					createAndAdd("embedded/" + datapack.getName(), Files.newInputStream(path));
 		}
 
 	}
