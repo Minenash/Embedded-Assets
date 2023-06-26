@@ -119,7 +119,7 @@ public class EACommands {
             text.append("\n\n§l" + profile.getName());
             text.append("\n§7").append(profile.getDescription());
         }
-        context.getSource().sendFeedback(text, false);
+        context.getSource().sendFeedback(()->text, false);
         return 1;
     }
 
@@ -139,7 +139,7 @@ public class EACommands {
         }
 
 
-        context.getSource().sendFeedback(Text.literal(builder.toString()), false);
+        context.getSource().sendFeedback(()->Text.literal(builder.toString()), false);
         return 1;
     }
 
@@ -193,7 +193,7 @@ public class EACommands {
     }
 
     private static int statusLocalHosting(CommandContext<ServerCommandSource> context) {
-        context.getSource().sendFeedback(Text.literal(
+        context.getSource().sendFeedback(()->Text.literal(
                 "\n§8§u[§aLocal Pack Hosting§8]§r"
                 + "\n\n§7Enabled: §e" + localResourcePackHostingConfig.enabled
                 + "\n§7IP: §e" + (LocalResourcePackHoster.ip.isEmpty() ? "N/A" : LocalResourcePackHoster.ip) + (localResourcePackHostingConfig.local ? "(local)" : "")
@@ -273,7 +273,7 @@ public class EACommands {
 
 
     private static int sendMessage(CommandContext<ServerCommandSource> context, String msg, boolean error) {
-        context.getSource().sendFeedback(Text.literal( "§8[§" + (error ? "c" : "a") + "EmbeddedAssets§8]§7 " + msg), false);
+        context.getSource().sendFeedback(()->Text.literal( "§8[§" + (error ? "c" : "a") + "EmbeddedAssets§8]§7 " + msg), false);
         return 1;
     }
 }
