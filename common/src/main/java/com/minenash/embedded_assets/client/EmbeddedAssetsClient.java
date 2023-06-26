@@ -3,7 +3,6 @@ package com.minenash.embedded_assets.client;
 import com.google.common.collect.ImmutableList;
 import com.minenash.embedded_assets.mixin.DirectoryResourcePackAccessor;
 import com.minenash.embedded_assets.mixin.ZipResourcePackAccessor;
-import com.mojang.bridge.game.PackType;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.resource.*;
@@ -83,7 +82,7 @@ public class EmbeddedAssetsClient {
 				addPackToList(datapack, datapack.getName(),
 					new ResourcePackProfile.Metadata(
 						profile.getDescription(),
-						SharedConstants.getGameVersion().getPackVersion(PackType.RESOURCE),
+						SharedConstants.getGameVersion().getResourceVersion(ResourceType.CLIENT_RESOURCES),
 						profile.getRequestedFeatures()));
 
 			var entries = zip.entries();
@@ -101,7 +100,7 @@ public class EmbeddedAssetsClient {
 				addPackToList(datapack, datapack.getName(),
 					new ResourcePackProfile.Metadata(
 						profile.getDescription(),
-						SharedConstants.getGameVersion().getPackVersion(PackType.RESOURCE),
+						SharedConstants.getGameVersion().getResourceVersion(ResourceType.CLIENT_RESOURCES),
 						profile.getRequestedFeatures()));
 
 			try (var stream = Files.newDirectoryStream(root)) {
