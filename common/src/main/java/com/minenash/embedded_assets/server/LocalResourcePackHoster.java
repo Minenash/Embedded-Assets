@@ -88,7 +88,7 @@ public class LocalResourcePackHoster extends Thread {
     public static void stopHttpd() {
         running = false;
         System.out.println( "\u001B[32mStopped the mini http daemon!");
-        if (!socket.isClosed()) {
+        if (socket!=null && !socket.isClosed()) {
             try {
                 socket.close();
             } catch (IOException e) {
@@ -117,7 +117,7 @@ public class LocalResourcePackHoster extends Thread {
                 System.out.print("A thread was interrupted in a mini http daemon!");
             }
         }
-        if (!socket.isClosed()) {
+        if (socket!=null && !socket.isClosed()) {
             try {
                 socket.close();
             } catch (IOException e) {
