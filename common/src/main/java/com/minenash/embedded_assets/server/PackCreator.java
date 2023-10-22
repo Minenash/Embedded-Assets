@@ -1,8 +1,7 @@
 package com.minenash.embedded_assets.server;
 
 import com.google.gson.*;
-import com.minenash.embedded_assets.mixin.DirectoryResourcePackAccessor;
-import com.minenash.embedded_assets.mixin.ZipResourcePackAccessor;
+import com.minenash.embedded_assets.mixin.AbstractFileResourcePackAccessor;
 import com.mojang.bridge.game.PackType;
 import net.minecraft.SharedConstants;
 import net.minecraft.resource.AbstractFileResourcePack;
@@ -35,10 +34,10 @@ public class PackCreator {
 
     public void create(List<AbstractFileResourcePack> packs) throws IOException {
         for (AbstractFileResourcePack datapack : packs) {
+            Path path = ((AbstractFileResourcePackAccessor)datapack).getBase().toPath();
             if (datapack instanceof ZipResourcePack)
-                readFromZip(new FileInputStream(((ZipResourcePackAccessor) datapack).getBackingZipFile()));
+                readFromZip(Files.newInputStream(path));
             else if (datapack instanceof DirectoryResourcePack){
-                Path path = ((DirectoryResourcePackAccessor) datapack).getRoot();
                 Path assets = path.resolve("assets");
                 if (Files.exists(assets)) {
                     readDirFromDir(assets);
@@ -164,7 +163,7 @@ public class PackCreator {
             JsonObject json = GSON.fromJson(new String(meta), JsonObject.class);
             if (json.has("filter")) {
                 JsonObject filter = json.get("filter").getAsJsonObject();
-                tempFilter = ResourceFilter.SERIALIZER.fromJson(filter);
+                tempFilter = ResourceFilter.READER.fromJson(filter);
                 if (filter.has("block"))
                     for (JsonElement block : filter.get("block").getAsJsonArray())
                         filterObjects.add(block.getAsJsonObject());
