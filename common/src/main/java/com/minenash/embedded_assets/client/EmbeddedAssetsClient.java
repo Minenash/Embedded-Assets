@@ -1,10 +1,11 @@
 package com.minenash.embedded_assets.client;
 
 import com.google.common.collect.ImmutableList;
-import com.minenash.embedded_assets.mixin.AbstractFileResourcePackAccessor;
+import com.minenash.embedded_assets.mixin.DirectoryResourcePackAccessor;
+import com.minenash.embedded_assets.mixin.ZipResourcePackAccessor;
+import net.minecraft.SharedConstants;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.resource.*;
-import net.minecraft.resource.metadata.PackResourceMetadata;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.text.Text;
 import org.slf4j.Logger;
@@ -12,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -69,37 +71,51 @@ public class EmbeddedAssetsClient {
 	}
 
 	private static void getResourcePack(AbstractFileResourcePack datapack, ResourcePackProfile profile) throws IOException {
-		File file = ((AbstractFileResourcePackAccessor) datapack).getBase();
-		if (!file.exists())
-			return;
+//		File file = ((AbstractFileResourcePackAccessor) datapack).getBase();
+//		if (!file.exists())
+//			return;
 
 		if (datapack instanceof ZipResourcePack) {
-			if (((ZipResourcePack) datapack).containsFile("assets"))
-				addPackToList(datapack, datapack.getName(), profile.getDescription(), profile.getCompatibility());
+			ZipFile zip = ((ZipResourcePackAccessor) datapack).getFile();
 
-			ZipFile zip = new ZipFile(file);
+			if (zip.getEntry("assets") != null)
+				addPackToList(datapack, datapack.getName(),
+					new ResourcePackProfile.Metadata(
+						profile.getDescription(),
+						SharedConstants.getGameVersion().getResourceVersion(ResourceType.CLIENT_RESOURCES),
+						profile.getRequestedFeatures()));
+
 			var entries = zip.entries();
 			while (entries.hasMoreElements() ) {
 				String name = entries.nextElement().getName();
 				if (name.endsWith(".zip") && !name.contains("/"))
-					createAndAdd("embedded/" + datapack.getName(), datapack.openRoot(name));
+					createAndAdd("embedded/" + datapack.getName(), datapack.openRoot(name).get());
 			}
 				zip.close();
 		}
-		else {
-			if (Files.exists(file.toPath().resolve("assets")))
-				addPackToList(datapack, datapack.getName(), profile.getDescription(), profile.getCompatibility());
-			for (File possiblePack : file.listFiles())
-				if (possiblePack.isFile() && possiblePack.getName().endsWith(".zip"))
-					createAndAdd("embedded/" + datapack.getName(), new FileInputStream(possiblePack));
+		else if (datapack instanceof DirectoryResourcePack) {
+			Path root = ((DirectoryResourcePackAccessor) datapack).getRoot();
+
+			if (Files.exists(root.resolve("assets")))
+				addPackToList(datapack, datapack.getName(),
+					new ResourcePackProfile.Metadata(
+						profile.getDescription(),
+						SharedConstants.getGameVersion().getResourceVersion(ResourceType.CLIENT_RESOURCES),
+						profile.getRequestedFeatures()));
+
+			try (var stream = Files.newDirectoryStream(root)) {
+				for (Path possiblePack : stream)
+					if (Files.isRegularFile(possiblePack) && possiblePack.getFileName().toString().endsWith(".zip"))
+						createAndAdd("embedded/" + datapack.getName(), Files.newInputStream(possiblePack));
+			}
 		}
 
 	}
 
-	public static void addPackToList(ResourcePack pack, String name, Text description, ResourcePackCompatibility compat) {
-		packs.add(new ResourcePackProfile(pack.getName(), false, () -> pack, Text.literal(name),
-				description, compat, ResourcePackProfile.InsertionPosition.TOP, false,
-				desc -> Text.literal("(datapack) ").append(desc)));
+	public static void addPackToList(ResourcePack pack, String name, ResourcePackProfile.Metadata metadata) {
+		packs.add(ResourcePackProfile.of(pack.getName(), Text.literal(name), false, name2 -> pack,
+				metadata, ResourceType.CLIENT_RESOURCES, ResourcePackProfile.InsertionPosition.TOP, false,
+				ResourcePackSource.create(desc -> Text.literal("(datapack) ").append(desc), true)));
 	}
 
 	public static void createAndAdd(String sourceName, InputStream rpInputStream) throws IOException {
@@ -119,9 +135,8 @@ public class EmbeddedAssetsClient {
 			return;
 
 		EmbeddedZipResourcePack pack = new EmbeddedZipResourcePack(sourceName, data);
-		PackResourceMetadata meta = pack.parseMetadata(PackResourceMetadata.READER);
-		addPackToList(pack, sourceName.substring(9), meta.getDescription(),
-				ResourcePackCompatibility.from(meta, ResourceType.CLIENT_RESOURCES));
+		var metadata = ResourcePackProfile.loadMetadata(sourceName, unused -> pack);
+		addPackToList(pack, sourceName.substring(9), metadata);
 	}
 
 }
